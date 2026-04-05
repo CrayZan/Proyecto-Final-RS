@@ -1,26 +1,67 @@
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { Utensils, LayoutDashboard, ShoppingBag, Menu as MenuIcon } from 'lucide-react';
+import { 
+  UtensilsCrossed, 
+  Store, 
+  Settings, 
+  ChevronRight, 
+  ShoppingBag,
+  Info
+} from 'lucide-react';
 
-// Importamos tus componentes de la carpeta UI
-import { Button } from "./components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./components/ui/card";
+// Importamos tus componentes UI
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 
 // --- VISTA DE INICIO (HOME) ---
 const Home = () => (
-  <div className="flex flex-col items-center justify-center min-h-[80vh] bg-slate-50 p-6 text-center">
-    <div className="bg-primary/10 p-4 rounded-full mb-6">
-      <Utensils className="h-12 w-12 text-primary" />
+  <div className="max-w-5xl mx-auto px-6 py-12 md:py-24">
+    <div className="text-center mb-16">
+      <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-2xl mb-6">
+        <UtensilsCrossed className="h-10 w-10 text-primary" />
+      </div>
+      <h1 className="text-5xl font-extrabold tracking-tight text-slate-900 mb-6">
+        Tu Restaurante Digital
+      </h1>
+      <p className="text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed">
+        Gestiona tu menú, recibe pedidos y administra tu negocio desde un solo lugar.
+      </p>
     </div>
-    <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl mb-4">
-      Bienvenido a tu Restaurante
-    </h1>
-    <p className="text-xl text-muted-foreground max-w-[600px] mb-8">
-      Tu sistema de gestión está listo. Desde aquí puedes ver el menú de clientes o gestionar tus platos.
-    </p>
-    <div className="flex flex-wrap gap-4 justify-center">
-      <Link to="/menu">
-        <Button size="lg" className="gap-2">
-          <ShoppingBag className="h-5 w-5" /> Ver Menú Público
-        </Button>
-      </Link>
-      <Link to="/admin">
+
+    <div className="grid md:grid-cols-2 gap-8">
+      <Card className="hover:shadow-xl transition-all border-2 border-transparent hover:border-primary/20 cursor-pointer group">
+        <Link to="/menu" className="block p-2">
+          <CardHeader>
+            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mb-4 text-orange-600">
+              <ShoppingBag className="h-6 w-6" />
+            </div>
+            <CardTitle className="text-2xl font-bold">Menú para Clientes</CardTitle>
+            <CardDescription className="text-lg">Tus clientes podrán ver los platos y precios actualizados.</CardDescription>
+          </CardHeader>
+          <CardFooter className="text-primary font-semibold flex items-center group-hover:gap-2 transition-all">
+            Ir al menú <ChevronRight className="h-5 w-5" />
+          </CardFooter>
+        </Link>
+      </Card>
+
+      <Card className="hover:shadow-xl transition-all border-2 border-transparent hover:border-primary/20 cursor-pointer group">
+        <Link to="/admin" className="block p-2">
+          <CardHeader>
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4 text-blue-600">
+              <Settings className="h-6 w-6" />
+            </div>
+            <CardTitle className="text-2xl font-bold">Administración</CardTitle>
+            <CardDescription className="text-lg">Configura tus platos, precios y disponibilidad en tiempo real.</CardDescription>
+          </CardHeader>
+          <CardFooter className="text-primary font-semibold flex items-center group-hover:gap-2 transition-all">
+            Gestionar <ChevronRight className="h-5 w-5" />
+          </CardFooter>
+        </Link>
+      </Card>
+    </div>
+  </div>
+);
+
+// --- VISTA DE MENÚ (CLIENTES) ---
+const Menu = () => (
+  <div className="max-w-6xl mx-auto px-6 py-12">
+    <div className="flex items-center gap-3 mb-10 border-b pb-6">
