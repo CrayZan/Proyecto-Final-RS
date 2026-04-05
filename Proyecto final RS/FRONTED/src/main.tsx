@@ -1,10 +1,12 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
+// Importamos el archivo de estilos que contiene Tailwind CSS
+import './index.css'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
+// Buscamos el elemento "root" en el HTML y renderizamos la aplicación
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
     <App />
-  </StrictMode>,
+  </React.StrictMode>,
 )
