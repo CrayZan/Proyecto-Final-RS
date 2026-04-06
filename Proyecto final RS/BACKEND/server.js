@@ -11,14 +11,18 @@ app.use(helmet());
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000, 
+  max: 100 
 });
 app.use(limiter);
 
-// CORS configuration
+// CORS configuration - IMPORTANTE: Permitir el frontend de Vercel y Localhost
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: [
+    process.env.FRONTEND_URL, 
+    'http://localhost:5173', 
+    'https://proyecto-final-rs.vercel.app' // Tu URL de Vercel según las capturas
+  ],
   credentials: true
 }));
 
@@ -29,12 +33,13 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Static files for uploads
 app.use('/uploads', express.static('uploads'));
 
-// Routes
+// --- RUTAS ---
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/orders', require('./routes/orders'));
+app.use('/api/payments', require('./routes/payments')); // <--- AGREGAMOS ESTA LÍNEA
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/coupons', require('./routes/coupons'));
 app.use('/api/restaurant', require('./routes/restaurant'));
@@ -64,7 +69,6 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-  console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
 module.exports = app;
