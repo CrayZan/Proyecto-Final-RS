@@ -1,65 +1,17 @@
 import { useState, useEffect } from "react"
-import { Routes, Route, Link } from "react-router-dom"
-import { Button } from "@/components/ui/button"
-import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Routes, Route, Link, useSearchParams } from "react-router-dom"
+import { Toaster } from "sonner"
+import { UtensilsCrossed, Settings, ClipboardList } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { UtensilsCrossed, ShoppingBag, Settings } from "lucide-react"
-import { Toaster } from "sonner" // <-- Nueva importación
 
 import Menu from "./pages/Menu"
 import Admin from "./pages/Admin"
+import Comandas from "./pages/Comandas" // Nueva página
 
 const PRODUCTOS_INICIALES = [
-  { id: 1, nombre: "Pizza Muzzarella", precio: 8500, categoria: "Pizzas", stock: 20 },
-  { id: 2, nombre: "Hamburguesa Completa", precio: 6200, categoria: "Burgers", stock: 15 },
-  { id: 3, nombre: "Empanada de Carne", precio: 900, categoria: "Entradas", stock: 50 },
-  { id: 4, nombre: "Gaseosa 500ml", precio: 1500, categoria: "Bebidas", stock: 100 },
+  { id: 1, nombre: "PIZZA MUZZARELLA", precio: 8500, categoria: "Pizzas", descripcion: "Muzzarella y orégano", imagen: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500" },
+  { id: 2, nombre: "HAMBURGUESA COMPLETA", precio: 6200, categoria: "Hamburguesas", descripcion: "Lechuga, tomate, huevo y queso", imagen: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500" }
 ]
-
-function Home() {
-  return (
-    <main className="flex-1 max-w-4xl mx-auto w-full p-6 py-12 animate-in fade-in duration-700">
-      <div className="text-center mb-12">
-        <h1 className="text-5xl font-black tracking-tight mb-4 text-slate-900">
-          Resto<span className="text-orange-600">Web</span>
-        </h1>
-        <p className="text-muted-foreground text-lg italic">San Vicente, Misiones</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <Card className="hover:shadow-2xl transition-all border-t-4 border-t-orange-500 group overflow-hidden bg-white/50 backdrop-blur-sm">
-          <CardHeader>
-            <div className="mb-2 w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform text-orange-600">
-              <ShoppingBag />
-            </div>
-            <CardTitle className="text-2xl font-bold">Punto de Venta</CardTitle>
-            <CardDescription>Carga pedidos y envía a cocina por WhatsApp.</CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <Button asChild className="w-full bg-orange-600 hover:bg-orange-700 h-12 text-lg font-bold">
-              <Link to="/menu">Abrir Terminal</Link>
-            </Button>
-          </CardFooter>
-        </Card>
-
-        <Card className="hover:shadow-2xl transition-all border-t-4 border-t-slate-800 group overflow-hidden bg-white/50 backdrop-blur-sm">
-          <CardHeader>
-            <div className="mb-2 w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform text-slate-800">
-              <Settings />
-            </div>
-            <CardTitle className="text-2xl font-bold">Administración</CardTitle>
-            <CardDescription>Gestiona precios, categorías y productos.</CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <Button asChild variant="outline" className="w-full border-slate-300 h-12 text-lg font-bold hover:bg-slate-900 hover:text-white transition-colors">
-              <Link to="/admin">Ir a Ajustes</Link>
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    </main>
-  )
-}
 
 export default function App() {
   const [productos, setProductos] = useState(() => {
@@ -67,33 +19,72 @@ export default function App() {
     return guardado ? JSON.parse(guardado) : PRODUCTOS_INICIALES
   })
 
+  // Aquí guardaremos los pedidos que llegan de las mesas
+  const [pedidos, setPedidos] = useState(() => {
+    const guardado = localStorage.getItem("restoweb_pedidos")
+    return guardado ? JSON.parse(guardado) : []
+  })
+
   useEffect(() => {
     localStorage.setItem("restoweb_productos", JSON.stringify(productos))
   }, [productos])
 
+  useEffect(() => {
+    localStorage.setItem("restoweb_pedidos", JSON.stringify(pedidos))
+  }, [pedidos])
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-orange-100 selection:text-orange-900">
-      <Toaster position="top-right" richColors /> {/* <-- El componente que muestra los Toasts */}
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+      <Toaster position="top-right" richColors />
       
       <header className="border-b bg-white/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4 flex justify-between items-center shadow-sm">
-        <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+        <Link to="/" className="flex items-center gap-2">
           <UtensilsCrossed className="h-6 w-6 text-orange-600" />
           <span className="text-xl font-bold tracking-tighter text-slate-900 uppercase">RESTOWEB</span>
         </Link>
-        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 font-bold">
-          SISTEMA ACTIVO
-        </Badge>
+        <div className="flex gap-2">
+           <Link to="/comandas">
+             <Badge variant="outline" className="cursor-pointer hover:bg-slate-100 py-1">
+               <ClipboardList size={14} className="mr-1"/> PANEL {pedidos.length > 0 && `(${pedidos.length})`}
+             </Badge>
+           </Link>
+        </div>
       </header>
 
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/menu" element={<Menu productos={productos} />} />
+        {/* El menú ahora acepta modo "cliente" si hay un numero de mesa en la URL */}
+        <Route path="/menu" element={<Menu productos={productos} setPedidos={setPedidos} />} />
         <Route path="/admin" element={<Admin productos={productos} setProductos={setProductos} />} />
+        <Route path="/comandas" element={<Comandas pedidos={pedidos} setPedidos={setPedidos} />} />
       </Routes>
 
-      <footer className="py-8 text-center text-xs text-slate-400 border-t bg-white mt-auto">
-        PROYECTO FINAL RS - DESARROLLO DE SOFTWARE
+      <footer className="py-6 text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest bg-white mt-auto border-t">
+        Sistema de Autogestión - San Vicente, Misiones
       </footer>
     </div>
+  )
+}
+
+function Home() {
+  return (
+    <main className="flex-1 max-w-4xl mx-auto w-full p-6 py-12 flex flex-col items-center justify-center text-center">
+      <h1 className="text-6xl font-black mb-2 italic">BIENVENIDO</h1>
+      <p className="text-slate-400 font-bold mb-10 uppercase tracking-tighter">Selecciona tu acceso</p>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+        <Link to="/menu?mesa=QR" className="p-8 bg-orange-600 text-white rounded-3xl shadow-xl hover:scale-105 transition-transform">
+          <UtensilsCrossed size={48} className="mx-auto mb-4" />
+          <h2 className="text-2xl font-black">VER MENÚ</h2>
+          <p className="opacity-80 text-sm">Escaneá y pedí desde tu mesa</p>
+        </Link>
+        
+        <Link to="/admin" className="p-8 bg-slate-900 text-white rounded-3xl shadow-xl hover:scale-105 transition-transform">
+          <Settings size={48} className="mx-auto mb-4" />
+          <h2 className="text-2xl font-black">ADMINISTRAR</h2>
+          <p className="opacity-80 text-sm">Precios, stock y fotos</p>
+        </Link>
+      </div>
+    </main>
   )
 }
