@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { ShoppingCart, Send, MapPin, Trash2, Utensils, Star, Megaphone } from "lucide-react"
+import { ShoppingCart, Send, MapPin, Trash2, Utensils, Star, Megaphone, Plus } from "lucide-react"
 import { toast } from "sonner"
 import { ref, push, onValue } from "firebase/database"
 import { db } from "../lib/firebase"
@@ -14,19 +14,13 @@ export default function Menu({ productos }: { productos: any[] }) {
   const [carrito, setCarrito] = useState<any[]>([])
   const [numeroMesa, setNumeroMesa] = useState(searchParams.get("mesa") || "")
   const [catSeleccionada, setCatSeleccionada] = useState("Todas")
-  
-  // ESTADO PARA LA PROMO (Sincronizado con Admin)
   const [promo, setPromo] = useState<any>(null)
 
-  // ESCUCHADOR EN TIEMPO REAL
   useEffect(() => {
     const promoRef = ref(db, 'config/promo');
     const unsubscribe = onValue(promoRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setPromo(snapshot.val());
-      } else {
-        setPromo(null);
-      }
+      if (snapshot.exists()) setPromo(snapshot.val());
+      else setPromo(null);
     });
     return () => unsubscribe(); 
   }, [])
@@ -48,10 +42,8 @@ export default function Menu({ productos }: { productos: any[] }) {
 
     try {
       await push(ref(db, 'pedidos'), nuevoPedido)
-      
       const textoWA = carrito.map(i => `${i.cant}x ${i.nombre}`).join('%0A')
       const urlWA = `https://wa.me/542966249538?text=*NUEVO PEDIDO MESA ${numeroMesa.toUpperCase()}*%0A${textoWA}%0A*TOTAL: $${total}*`
-      
       window.open(urlWA, '_blank')
       setCarrito([])
       toast.success("¡Pedido enviado a cocina!")
@@ -60,13 +52,24 @@ export default function Menu({ productos }: { productos: any[] }) {
     }
   }
 
-  const agregarAlCarrito = (p: any) => {
+  const agregarAlCarrito = (item: any) => {
     setCarrito(prev => {
-      const existe = prev.find(item => item.id === p.id)
-      if (existe) return prev.map(item => item.id === p.id ? { ...item, cant: item.cant + 1 } : item)
-      return [...prev, { ...p, cant: 1 }]
+      const existe = prev.find(p => p.id === item.id)
+      if (existe) return prev.map(p => p.id === item.id ? { ...p, cant: p.cant + 1 } : p)
+      return [...prev, { ...item, cant: 1 }]
     })
-    toast.success(`${p.nombre} agregado`)
+    toast.success(`${item.nombre} agregado`)
+  }
+
+  // FUNCIÓN ESPECIAL PARA AGREGAR LA PROMO
+  const agregarPromoAlCarrito = () => {
+    const itemPromo = {
+      id: "PROMO_ESPECIAL",
+      nombre: promo.titulo,
+      precio: Number(promo.precio),
+      imagen: promo.imagen
+    }
+    agregarAlCarrito(itemPromo)
   }
 
   const filtrar = catSeleccionada === "Todas" ? productos : productos.filter(p => p.categoria === catSeleccionada)
@@ -74,26 +77,34 @@ export default function Menu({ productos }: { productos: any[] }) {
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto animate-in fade-in duration-500 pb-20">
       
-      {/* BANNER DE PROMO SINCRONIZADO */}
+      {/* BANNER DE PROMO CON PRECIO Y BOTÓN DE COMPRA */}
       {promo?.activa && (
-        <div className="mb-10 rounded-[2.5rem] overflow-hidden bg-slate-900 text-white shadow-2xl border border-white/5 animate-in zoom-in-95 duration-500">
+        <div className="mb-10 rounded-[3rem] overflow-hidden bg-slate-900 text-white shadow-2xl border border-white/5 animate-in zoom-in-95 duration-500">
           <div className="flex flex-col md:flex-row items-center">
-            <div className="w-full md:w-1/2 h-56 md:h-72">
-              <img src={promo.imagen} className="w-full h-full object-cover opacity-90 shadow-2xl" alt="Promoción" />
-            </div>
-            <div className="p-8 md:p-12 space-y-4 text-center md:text-left flex-1 relative">
-              <div className="absolute top-4 right-8 hidden md:block opacity-10">
-                 <Megaphone size={120} />
+            <div className="w-full md:w-1/2 h-64 md:h-80 relative">
+              <img src={promo.imagen} className="w-full h-full object-cover opacity-80" alt="Promoción" />
+              <div className="absolute bottom-6 left-6 bg-orange-600 px-6 py-2 rounded-2xl font-black text-3xl italic shadow-2xl rotate-[-2deg]">
+                ${Number(promo.precio).toLocaleString('es-AR')}
               </div>
-              <Badge className="bg-orange-600 text-white font-black uppercase px-4 py-1 rounded-full animate-pulse tracking-widest text-[10px]">
-                Recomendado
-              </Badge>
-              <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter leading-none">
-                {promo.titulo}
-              </h2>
-              <p className="text-orange-200 font-bold italic text-lg md:text-xl">
-                {promo.mensaje}
-              </p>
+            </div>
+            <div className="p-8 md:p-12 space-y-6 flex-1 text-center md:text-left">
+              <div className="space-y-2">
+                <Badge className="bg-white text-slate-900 font-black uppercase px-4 py-1 rounded-full tracking-widest text-[10px]">
+                  Oferta Exclusiva
+                </Badge>
+                <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter leading-none">
+                  {promo.titulo}
+                </h2>
+                <p className="text-slate-400 font-bold italic text-lg line-clamp-2">
+                  {promo.mensaje}
+                </p>
+              </div>
+              <Button 
+                onClick={agregarPromoAlCarrito}
+                className="w-full md:w-auto bg-orange-600 hover:bg-orange-700 text-white h-16 px-10 rounded-2xl font-black uppercase italic tracking-tighter shadow-xl transition-all active:scale-95 flex gap-3 text-lg"
+              >
+                <Plus size={24} strokeWidth={3} /> AGREGAR AL PEDIDO
+              </Button>
             </div>
           </div>
         </div>
