@@ -1,12 +1,13 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
-// Importamos el archivo de estilos que contiene Tailwind CSS
+import { BrowserRouter } from 'react-router-dom'
+import App from './App'
 import './index.css'
 
-// Buscamos el elemento "root" en el HTML y renderizamos la aplicación
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
   </React.StrictMode>,
 )
