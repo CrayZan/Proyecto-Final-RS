@@ -16,7 +16,7 @@ const DATOS_PAGO = {
   alias: "RESTOWEB.SAN.VICENTE", 
   cbu: "0000003100012345678901",
   titular: "TU NOMBRE O COMERCIO",
-  urlBackendMP: "https://proyecto-final-rs.onrender.com/create_preference" 
+  urlBackendMP: "https://proyecto-final-rs.onrender.com/api/payments/create_preference" 
 }
 
 export default function Menu({ productos }: { productos: any[] }) {
