@@ -193,4 +193,58 @@ export default function Menu({ productos }: { productos: any[] }) {
                 <div className="h-48 overflow-hidden"><img src={p.imagen} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={p.nombre} /></div>
                 <CardHeader className="p-6 pb-0"><CardTitle className="uppercase font-black text-lg italic tracking-tighter">{p.nombre}</CardTitle></CardHeader>
                 <CardContent className="p-6 pt-2 flex justify-between items-center">
-                  <span className="text-2xl font-black text-orange-600">${p.precio.toLocaleString()}
+                  <span className="text-2xl font-black text-orange-600">${p.precio.toLocaleString()}</span>
+                  <Button onClick={() => agregarAlCarrito(p)} className="bg-slate-900 rounded-2xl h-12 w-12 p-0"><Plus size={20}/></Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* COLUMNA CARRITO Y PAGOS */}
+        <div className="lg:col-span-1">
+          <Card className="rounded-[3rem] shadow-2xl border-none sticky top-24 bg-white overflow-hidden">
+            <div className="bg-slate-900 p-8 text-center">
+               <h3 className="text-white font-black uppercase italic tracking-widest text-[10px]">Resumen de Compra</h3>
+               <div className="text-3xl font-black text-orange-500 mt-2">${total.toLocaleString()}</div>
+            </div>
+            
+            <CardContent className="p-6 space-y-6">
+              {/* Selector de Pago */}
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase text-slate-400 text-center tracking-widest italic">Método de Pago</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'efectivo', icon: Banknote },
+                    { id: 'transferencia', icon: Wallet },
+                    { id: 'mercadopago', icon: CreditCard }
+                  ].map(m => (
+                    <button 
+                      key={m.id} onClick={() => setMetodoPago(m.id as any)}
+                      className={`flex flex-col items-center p-3 rounded-2xl border transition-all ${metodoPago === m.id ? 'border-orange-600 bg-orange-50 text-orange-600' : 'border-slate-100 text-slate-300'}`}
+                    >
+                      <m.icon size={20} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="max-h-60 overflow-y-auto space-y-4">
+                {carrito.map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-xs animate-in slide-in-from-right">
+                    <div className="font-black uppercase italic">{item.cant}x {item.nombre}</div>
+                    <button onClick={() => setCarrito(carrito.filter((_, i) => i !== idx))} className="text-red-300"><Trash2 size={14}/></button>
+                  </div>
+                ))}
+              </div>
+
+              <Button onClick={enviarPedido} className="w-full h-16 bg-green-600 hover:bg-green-700 rounded-2xl font-black text-lg uppercase italic shadow-xl">
+                <Send className="mr-2" /> FINALIZAR
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
+}
