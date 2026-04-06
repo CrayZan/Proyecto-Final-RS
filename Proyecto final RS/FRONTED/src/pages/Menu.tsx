@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { 
   Utensils, Plus, Truck, Store, Wallet, 
-  CreditCard, Banknote, Navigation, Copy, Check, Loader2 
+  CreditCard, Banknote, Navigation, Copy, Check, Loader2, X 
 } from "lucide-react"
 import { toast } from "sonner"
 import { ref, push, onValue } from "firebase/database"
@@ -34,18 +34,22 @@ export default function Menu({ productos }: { productos: any[] }) {
   const total = carrito.reduce((acc, item) => acc + (item.precio * item.cant), 0)
   const categorias = ["Todas", ...new Set(productos.map(p => p.categoria))]
 
-  // --- FUNCIÓN DE GEOLOCALIZACIÓN ---
+  // --- FUNCIÓN PARA ELIMINAR DEL CARRITO ---
+  const eliminarDelCarrito = (index: number) => {
+    const nuevoCarrito = [...carrito];
+    nuevoCarrito.splice(index, 1);
+    setCarrito(nuevoCarrito);
+    toast.success("Producto eliminado");
+  };
+
   const obtenerUbicacion = () => {
     if (!navigator.geolocation) {
       return toast.error("Tu navegador no soporta geolocalización")
     }
-
     const toastId = toast.loading("Obteniendo tu ubicación exacta...")
-
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords
-        // Generamos el link de Google Maps para que el repartidor lo vea directo
         const mapUrl = `https://www.google.com/maps?q=${latitude},${longitude}`
         setDireccion(mapUrl)
         toast.dismiss(toastId)
@@ -53,18 +57,7 @@ export default function Menu({ productos }: { productos: any[] }) {
       },
       (error) => {
         toast.dismiss(toastId)
-        console.error(error)
-        switch(error.code) {
-          case error.PERMISSION_DENIED:
-            toast.error("Debes permitir el acceso al GPS en tu navegador")
-            break
-          case error.POSITION_UNAVAILABLE:
-            toast.error("La información de ubicación no está disponible")
-            break
-          default:
-            toast.error("Error al obtener la ubicación")
-            break
-        }
+        toast.error("Error al obtener la ubicación")
       },
       { enableHighAccuracy: true, timeout: 10000 }
     )
@@ -120,7 +113,6 @@ export default function Menu({ productos }: { productos: any[] }) {
 
     try {
       await push(ref(db, 'pedidos'), pedidoData)
-      
       let mensajeWA = `*NUEVO PEDIDO - ${entrega.toUpperCase()}*%0A`
       mensajeWA += `*Pago:* ${pedidoData.metodoPago.toUpperCase()}%0A`
       mensajeWA += `*Destino:* ${pedidoData.destino}%0A%0A`
@@ -140,6 +132,7 @@ export default function Menu({ productos }: { productos: any[] }) {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         
         <div className="lg:col-span-3 space-y-6">
+          {/* Selector de Entrega */}
           <div className="bg-white p-2 rounded-[2rem] shadow-sm border border-slate-100 flex gap-2">
             {[
               { id: 'mesa', icon: Utensils, label: 'En Mesa' },
@@ -157,6 +150,7 @@ export default function Menu({ productos }: { productos: any[] }) {
             ))}
           </div>
 
+          {/* Input de Destino */}
           <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-orange-50">
             {entrega === 'mesa' ? (
               <input 
@@ -171,11 +165,7 @@ export default function Menu({ productos }: { productos: any[] }) {
                   className="flex-1 bg-slate-50 rounded-xl px-4 font-bold text-sm h-12 border-none" 
                   value={direccion} onChange={e => setDireccion(e.target.value)} 
                 />
-                <Button 
-                  onClick={obtenerUbicacion} 
-                  variant="outline" 
-                  className="h-12 w-12 rounded-xl border-orange-100 text-orange-600 shadow-sm active:scale-90"
-                >
+                <Button onClick={obtenerUbicacion} variant="outline" className="h-12 w-12 rounded-xl border-orange-100 text-orange-600 shadow-sm active:scale-90">
                   <Navigation size={18} />
                 </Button>
               </div>
@@ -184,6 +174,7 @@ export default function Menu({ productos }: { productos: any[] }) {
             )}
           </div>
 
+          {/* Grilla de Productos */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {productos.filter(p => catSeleccionada === "Todas" || p.categoria === catSeleccionada).map(p => (
               <Card key={p.id} className="rounded-[2rem] overflow-hidden border-none shadow-sm bg-white">
@@ -200,6 +191,7 @@ export default function Menu({ productos }: { productos: any[] }) {
           </div>
         </div>
 
+        {/* --- COLUMNA DEL CARRITO Y PAGO --- */}
         <div className="lg:col-span-1">
           <Card className="rounded-[2.5rem] shadow-2xl border-none sticky top-24 bg-white overflow-hidden border-t-4 border-orange-500">
             <div className="bg-slate-900 p-6 text-center text-white">
@@ -208,6 +200,33 @@ export default function Menu({ productos }: { productos: any[] }) {
             </div>
             
             <CardContent className="p-5 space-y-6">
+              {/* Lista Detallada de Productos */}
+              <div className="space-y-3">
+                <p className="text-[9px] font-black text-slate-400 uppercase text-center italic">Items Seleccionados</p>
+                <ScrollArea className="h-[200px] pr-2">
+                  {carrito.length === 0 ? (
+                    <p className="text-center text-slate-300 py-10 italic text-[10px] font-black uppercase">Carrito vacío</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {carrito.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-slate-100 animate-in slide-in-from-right-2">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase italic leading-tight">{item.nombre}</span>
+                            <span className="text-[10px] font-bold text-orange-600">${item.precio.toLocaleString()}</span>
+                          </div>
+                          <button onClick={() => eliminarDelCarrito(idx)} className="h-7 w-7 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </div>
+
+              <hr className="border-slate-100" />
+
+              {/* Métodos de Pago */}
               {entrega !== 'mesa' ? (
                 <div className="space-y-4">
                   <p className="text-[9px] font-black text-slate-400 uppercase text-center italic">Método de Pago</p>
