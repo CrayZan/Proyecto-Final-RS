@@ -1,75 +1,72 @@
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { useState } from 'react';
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { UtensilsCrossed, LayoutDashboard, Settings, ShoppingBag } from "lucide-react"
 
-// --- COMPONENTE: HOME ---
-const Home = () => (
-  <div style={{ padding: '60px 20px', textAlign: 'center', fontFamily: 'sans-serif' }}>
-    <div style={{ fontSize: '60px', marginBottom: '20px' }}>🍴</div>
-    <h1 style={{ fontSize: '2.8rem', fontWeight: 'bold', color: '#1e293b' }}>Mi Restaurante</h1>
-    <p style={{ color: '#64748b', fontSize: '1.2rem', marginBottom: '40px' }}>Gestión profesional para tu negocio.</p>
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', maxWidth: '900px', margin: '0 auto' }}>
-      <Link to="/menu" style={{ textDecoration: 'none', color: 'inherit', border: '1px solid #e2e8f0', padding: '40px 20px', borderRadius: '20px', background: '#fff' }}>
-        <div style={{ fontSize: '40px' }}>🛍️</div>
-        <h3>Ver Menú</h3>
-      </Link>
-      <Link to="/admin" style={{ textDecoration: 'none', color: 'inherit', border: '1px solid #e2e8f0', padding: '40px 20px', borderRadius: '20px', background: '#fff' }}>
-        <div style={{ fontSize: '40px' }}>⚙️</div>
-        <h3>Administración</h3>
-      </Link>
-    </div>
-  </div>
-);
-
-// --- COMPONENTE: MENU ---
-const Menu = () => {
-  const [platos] = useState([
-    { id: 1, nombre: "Milanesa Completa", precio: 4500, desc: "Con papas fritas", cat: "Minutas" },
-    { id: 2, nombre: "Yerba Mate Premium", precio: 2800, desc: "Selección especial 1kg", cat: "Almacén" }
-  ]);
-
+function App() {
   return (
-    <div style={{ padding: '40px 20px', maxWidth: '800px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-      <h2 style={{ textAlign: 'center', marginBottom: '30px' }}>Nuestra Carta</h2>
-      {platos.map(plato => (
-        <div key={plato.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '20px', marginBottom: '15px', borderRadius: '15px', border: '1px solid #f1f5f9' }}>
-          <div>
-            <span style={{ color: '#2563eb', fontWeight: 'bold', fontSize: '0.8rem' }}>{plato.cat}</span>
-            <h3 style={{ margin: '5px 0' }}>{plato.nombre}</h3>
-            <p style={{ color: '#64748b' }}>{plato.desc}</p>
-          </div>
-          <div style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>${plato.precio}</div>
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+      {/* Navbar */}
+      <header className="border-b bg-white px-6 py-4 flex justify-between items-center shadow-sm">
+        <div className="flex items-center gap-2">
+          <UtensilsCrossed className="h-6 w-6 text-orange-600" />
+          <span className="text-xl font-bold tracking-tight">RESTOWEB</span>
         </div>
-      ))}
-    </div>
-  );
-};
-
-// --- COMPONENTE: ADMIN ---
-const Admin = () => (
-  <div style={{ padding: '40px 20px', maxWidth: '800px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-    <h2>Panel de Control</h2>
-    <div style={{ padding: '20px', background: '#f8fafc', borderRadius: '12px', marginTop: '20px' }}>
-      <p>No hay pedidos pendientes.</p>
-    </div>
-  </div>
-);
-
-// --- COMPONENTE PRINCIPAL ---
-export default function App() {
-  return (
-    <Router>
-      <nav style={{ display: 'flex', justifyContent: 'space-between', padding: '20px 5%', borderBottom: '1px solid #f1f5f9' }}>
-        <Link to="/" style={{ fontWeight: 'bold', textDecoration: 'none', color: '#0f172a' }}>RESTOWEB</Link>
-        <div style={{ display: 'flex', gap: '20px' }}>
-          <Link to="/menu" style={{ textDecoration: 'none', color: '#475569' }}>Menú</Link>
-          <Link to="/admin" style={{ textDecoration: 'none', color: '#475569' }}>Admin</Link>
+        <div className="flex gap-2">
+          <Badge variant="outline" className="text-orange-600 border-orange-200">En Línea</Badge>
+          <Button variant="ghost" size="sm">Admin</Button>
         </div>
-      </nav>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/menu" element={<Menu />} />
-        <Route path="/admin" element={<Admin />} />
-      </Routes>
-    </Router>
-  );
+      </header>
+
+      {/* Contenido */}
+      <main className="flex-1 max-w-4xl mx-auto w-full p-6 py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-extrabold tracking-tight mb-4">Gestión de Restaurante</h1>
+          <p className="text-muted-foreground text-lg">Selecciona una opción para comenzar a operar.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Tarjeta de Ventas/Menú */}
+          <Card className="hover:shadow-xl transition-all cursor-pointer border-t-4 border-t-orange-500">
+            <CardHeader>
+              <div className="mb-2 w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                <ShoppingBag className="text-orange-600" />
+              </div>
+              <CardTitle>Punto de Venta</CardTitle>
+              <CardDescription>Toma pedidos y gestiona el menú digital.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">Acceso rápido a categorías, precios y stock en tiempo real.</p>
+            </CardContent>
+            <CardFooter>
+              <Button className="w-full bg-orange-600 hover:bg-orange-700">Abrir Terminal</Button>
+            </CardFooter>
+          </Card>
+
+          {/* Tarjeta de Administración */}
+          <Card className="hover:shadow-xl transition-all cursor-pointer border-t-4 border-t-slate-800">
+            <CardHeader>
+              <div className="mb-2 w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
+                <Settings className="text-slate-800" />
+              </div>
+              <CardTitle>Configuración</CardTitle>
+              <CardDescription>Panel de control, reportes y usuarios.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">Ajusta los detalles de tu local y revisa las estadísticas de venta.</p>
+            </CardContent>
+            <CardFooter>
+              <Button variant="outline" className="w-full border-slate-300">Ir a Ajustes</Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </main>
+
+      <footer className="py-8 text-center text-sm text-muted-foreground border-t bg-white">
+        © 2026 RestoWeb - San Vicente, Misiones
+      </footer>
+    </div>
+  )
 }
+
+export default App
