@@ -2,70 +2,60 @@ import { useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
-import { ShoppingCart, Trash2, Send, Utensils, MapPin } from "lucide-react"
+import { ShoppingCart, Send, MapPin, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { ref, push } from "firebase/database"
+import { db } from "../lib/firebase"
 
-export default function Menu({ productos, setPedidos }: { productos: any[], setPedidos: any }) {
+export default function Menu({ productos }: { productos: any[] }) {
   const [searchParams] = useSearchParams()
-  const mesaDesdeURL = searchParams.get("mesa")
-  
-  const [carrito, setCarrito] = useState<{id: number, nombre: string, precio: number, cant: number}[]>([])
+  const [carrito, setCarrito] = useState<any[]>([])
+  const [numeroMesa, setNumeroMesa] = useState(searchParams.get("mesa") || "")
   const [catSeleccionada, setCatSeleccionada] = useState("Todas")
-  const [numeroMesa, setNumeroMesa] = useState(mesaDesdeURL || "")
 
-  const categoriasExistentes = ["Todas", ...new Set(productos.map(p => p.categoria))]
   const total = carrito.reduce((acc, item) => acc + (item.precio * item.cant), 0)
+  const categorias = ["Todas", ...new Set(productos.map(p => p.categoria))]
 
-  const agregarAlCarrito = (p: any) => {
-    setCarrito(prev => {
-      const existe = prev.find(item => item.id === p.id)
-      if (existe) return prev.map(item => item.id === p.id ? {...item, cant: item.cant + 1} : item)
-      return [...prev, { ...p, cant: 1 }]
-    })
-    toast.success(`Agregado: ${p.nombre}`)
-  }
-
-  const enviarPedidoAlLocal = () => {
-    if (!numeroMesa) return toast.error("¡Ingresá tu número de mesa!")
+  const enviarPedido = async () => {
+    if (!numeroMesa) return toast.error("¡Ingresá el N° de Mesa!")
     if (carrito.length === 0) return toast.error("El carrito está vacío")
 
-    const nuevaComanda = {
-      id: Date.now(),
+    const nuevoPedido = {
       mesa: numeroMesa.toUpperCase(),
       items: carrito,
       total: total,
-      hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+      hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+      estado: "pendiente"
     }
 
-    // --- CORRECCIÓN CRÍTICA AQUÍ ---
-    // Leemos lo que ya hay en LocalStorage, sumamos lo nuevo y volvemos a guardar
-    const pedidosGuardados = JSON.parse(localStorage.getItem("restoweb_pedidos") || "[]")
-    const listaActualizada = [nuevaComanda, ...pedidosGuardados]
-    localStorage.setItem("restoweb_pedidos", JSON.stringify(listaActualizada))
-    
-    // Actualizamos el estado global para que el Panel lo vea al instante
-    setPedidos(listaActualizada)
-    // ------------------------------
-
-    const textoWA = carrito.map(i => `*${i.cant}x* ${i.nombre}`).join('%0A')
-    const urlWA = `https://wa.me/542966249538?text=*MESA ${numeroMesa.toUpperCase()} - NUEVO PEDIDO*%0A--------------------------%0A${textoWA}%0A--------------------------%0A*TOTAL: $${total}*`
-    
-    window.open(urlWA, '_blank')
-    setCarrito([])
-    toast.success("¡Pedido enviado a la cocina!")
+    try {
+      // MANDA EL PEDIDO A FIREBASE (TIEMPO REAL)
+      await push(ref(db, 'pedidos'), nuevoPedido)
+      
+      // Respaldo de WhatsApp (el número que me pasaste antes)
+      const textoWA = carrito.map(i => `${i.cant}x ${i.nombre}`).join('%0A')
+      const urlWA = `https://wa.me/542966249538?text=*NUEVO PEDIDO MESA ${numeroMesa.toUpperCase()}*%0A--------------------------%0A${textoWA}%0A--------------------------%0A*TOTAL: $${total}*`
+      
+      window.open(urlWA, '_blank')
+      
+      setCarrito([])
+      toast.success("¡Pedido enviado a la cocina!")
+    } catch (error) {
+      console.error(error)
+      toast.error("Error al conectar con la base de datos")
+    }
   }
 
-  const productosFiltrados = catSeleccionada === "Todas" ? productos : productos.filter(p => p.categoria === catSeleccionada)
+  const filtrar = catSeleccionada === "Todas" ? productos : productos.filter(p => p.categoria === catSeleccionada)
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto animate-in fade-in duration-500">
       <div className="mb-6 flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-[2rem] shadow-sm border border-orange-100 gap-4">
         <div className="flex items-center gap-3">
-          <div className="bg-slate-900 p-3 rounded-2xl text-orange-500 shadow-inner"><MapPin size={24} /></div>
+          <div className="bg-slate-900 p-3 rounded-2xl text-orange-500"><MapPin size={24} /></div>
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">Ubicación</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Tu ubicación</p>
             <input 
               placeholder="Mesa..." 
               className="font-black text-xl text-slate-900 border-none p-0 focus:ring-0 w-32 uppercase"
@@ -81,36 +71,39 @@ export default function Menu({ productos, setPedidos }: { productos: any[], setP
         <div className="lg:col-span-3">
           <ScrollArea className="w-full whitespace-nowrap mb-6">
             <div className="flex space-x-2">
-              {categoriasExistentes.map((cat) => (
-                <button 
-                  key={cat} 
-                  className={`rounded-full px-6 h-9 font-black uppercase text-[10px] border transition-all ${catSeleccionada === cat ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-400 border-slate-200"}`} 
-                  onClick={() => setCatSeleccionada(cat)}
+              {categorias.map(c => (
+                <Button 
+                  key={c} 
+                  variant={catSeleccionada === c ? "default" : "outline"} 
+                  onClick={() => setCatSeleccionada(c)} 
+                  className={`rounded-full px-6 font-black uppercase text-[10px] ${catSeleccionada === c ? "bg-slate-900" : "text-slate-400"}`}
                 >
-                  {cat}
-                </button>
+                  {c}
+                </Button>
               ))}
             </div>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {productosFiltrados.map(p => (
-              <Card key={p.id} className="overflow-hidden border-none shadow-md bg-white rounded-[2.5rem]">
-                <div className="relative h-48 overflow-hidden">
-                  <img src={p.imagen} className="w-full h-full object-cover" alt={p.nombre} />
+            {filtrar.map(p => (
+              <Card key={p.id} className="rounded-[2.5rem] overflow-hidden border-none shadow-md bg-white group">
+                <div className="h-48 overflow-hidden">
+                  <img src={p.imagen} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={p.nombre} />
                 </div>
-                <CardHeader className="pb-1 px-6 pt-6">
-                  <CardTitle className="text-lg font-black text-slate-800 uppercase italic leading-tight">{p.nombre}</CardTitle>
-                </CardHeader>
-                <CardContent className="flex-1 px-6">
-                  <p className="text-[11px] text-slate-400 font-bold italic mb-4 line-clamp-2">{p.descripcion || "Receta tradicional de San Vicente."}</p>
-                  <p className="text-2xl font-black text-orange-600 tracking-tighter">${p.precio.toLocaleString('es-AR')}</p>
+                <CardHeader className="pb-1"><CardTitle className="uppercase font-black text-sm italic">{p.nombre}</CardTitle></CardHeader>
+                <CardContent>
+                   <p className="text-2xl font-black text-orange-600 tracking-tighter">${p.precio.toLocaleString('es-AR')}</p>
                 </CardContent>
-                <CardFooter className="p-6 pt-0">
-                  <Button onClick={() => agregarAlCarrito(p)} className="w-full bg-slate-900 hover:bg-orange-600 h-12 font-black uppercase rounded-2xl shadow-lg">
-                    + Agregar
-                  </Button>
+                <CardFooter>
+                  <Button className="w-full bg-slate-900 h-12 font-black rounded-2xl" onClick={() => {
+                    setCarrito(prev => {
+                      const existe = prev.find(item => item.id === p.id)
+                      if (existe) return prev.map(item => item.id === p.id ? {...item, cant: item.cant + 1} : item)
+                      return [...prev, { ...p, cant: 1 }]
+                    })
+                    toast.success("Agregado")
+                  }}>+ AGREGAR</Button>
                 </CardFooter>
               </Card>
             ))}
@@ -118,35 +111,27 @@ export default function Menu({ productos, setPedidos }: { productos: any[], setP
         </div>
 
         <div className="lg:col-span-1">
-          <Card className="h-fit sticky top-28 border-none shadow-2xl bg-white rounded-[2.5rem] overflow-hidden">
-            <CardHeader className="bg-orange-600 text-white p-6 text-center">
-              <div className="flex items-center justify-center gap-2 font-black uppercase italic tracking-widest text-sm">
-                <ShoppingCart className="text-white" size={18}/> Mi Pedido
-              </div>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4 max-h-[400px] overflow-y-auto">
+          <Card className="rounded-[2.5rem] shadow-2xl border-none sticky top-28">
+            <CardHeader className="bg-orange-600 text-white rounded-t-[2.5rem] font-black uppercase text-center py-6 italic tracking-widest">Mi Pedido</CardHeader>
+            <CardContent className="p-6 max-h-[400px] overflow-y-auto">
               {carrito.length === 0 ? (
-                <div className="text-center py-12 text-slate-200 uppercase font-black text-[10px]">Vacío</div>
+                <div className="text-center py-10 opacity-20 font-black text-[10px] uppercase tracking-widest">Carrito Vacío</div>
               ) : (
-                carrito.map(item => (
-                  <div key={item.id} className="flex justify-between items-start border-b border-slate-50 pb-4">
+                carrito.map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center border-b pb-3 mb-3">
                     <div className="flex-1">
-                      <div className="font-black text-slate-800 text-[11px] uppercase leading-tight mb-1">{item.nombre}</div>
-                      <div className="text-[10px] text-orange-600 font-black px-2 py-0.5 bg-orange-50 rounded-full w-fit">
-                        {item.cant} UNID. — ${(item.precio * item.cant).toLocaleString()}
-                      </div>
+                      <div className="font-black text-slate-800 text-[11px] uppercase leading-tight">{item.nombre}</div>
+                      <div className="text-[10px] text-orange-600 font-black">Cant: {item.cant}</div>
                     </div>
-                    <button onClick={() => setCarrito(prev => prev.filter(i => i.id !== item.id))} className="text-slate-200 hover:text-red-500 ml-2">
-                      <Trash2 size={16} />
-                    </button>
+                    <button onClick={() => setCarrito(carrito.filter((_, i) => i !== idx))} className="text-red-200 hover:text-red-500"><Trash2 size={16}/></button>
                   </div>
                 ))
               )}
             </CardContent>
             {carrito.length > 0 && (
-              <CardFooter className="flex-col p-6 bg-slate-50 gap-3">
-                <Button onClick={enviarPedidoAlLocal} className="w-full bg-green-600 hover:bg-green-700 h-16 font-black text-lg uppercase shadow-xl shadow-green-100 rounded-2xl">
-                  <Send className="mr-2 h-5 w-5" /> ENVIAR PEDIDO
+              <CardFooter className="p-6 pt-0">
+                <Button onClick={enviarPedido} className="w-full bg-green-600 h-16 font-black text-lg rounded-2xl shadow-lg uppercase italic tracking-tighter shadow-green-100">
+                  <Send className="mr-2" /> ENVIAR PEDIDO
                 </Button>
               </CardFooter>
             )}
