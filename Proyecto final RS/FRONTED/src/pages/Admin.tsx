@@ -3,168 +3,160 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, QrCode, UploadCloud, UtensilsCrossed, GlassWater, Coffee, Pizza, LayoutGrid, Info } from "lucide-react"
+import { Plus, Trash2, QrCode, UploadCloud, UtensilsCrossed, Edit3, Save, X, ChevronRight } from "lucide-react"
 import { Link } from "react-router-dom"
-import { ref, push, remove } from "firebase/database"
+import { ref, push, remove, update } from "firebase/database"
 import { db } from "../lib/firebase"
 import { toast } from "sonner"
 
-// CATEGORÍAS CON ICONOS SEGUROS (Compatibles con versiones viejas)
-const CATEGORIAS_COMPLETAS = [
-  { nombre: "Entradas", icono: LayoutGrid },
-  { nombre: "Ensaladas", icono: UtensilsCrossed },
-  { nombre: "Comidas", icono: Pizza },
-  { nombre: "Pastas", icono: UtensilsCrossed },
-  { nombre: "Carnes", icono: UtensilsCrossed },
-  { nombre: "Bebidas", icono: GlassWater },
-  { nombre: "Vinos", icono: GlassWater },
-  { nombre: "Cervezas", icono: GlassWater },
-  { nombre: "Postres", icono: Coffee },
-  { nombre: "Promociones", icono: Pizza },
+// CATEGORÍAS EXACTAS SOLICITADAS
+const CATEGORIAS_MENU = [
+  "Entradas", "Principales", "Pastas caseras", "Sandwiches", 
+  "Hamburguesas", "Empanadas", "Pizzas", "Pizzetas", 
+  "Postres", "Cerveza", "Vinos", "Gaseosas"
 ];
+
+const SUBSALSAS = ["Salsa Bologna", "Salsa Blanca", "Ambas", "Sin Salsa"];
 
 export default function Admin({ productos }: { productos: any[] }) {
   const [nuevo, setNuevo] = useState({ 
-    nombre: "", 
-    precio: "", 
-    categoria: "Comidas", 
-    imagen: "", 
-    descripcion: "" 
+    nombre: "", precio: "", categoria: "Principales", imagen: "", descripcion: "" 
   })
+  const [editandoId, setEditandoId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState({ precio: "", descripcion: "" })
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    const file = e.target.files[0];
+    if (!e.target.files?.[0]) return;
     const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => {
-      setNuevo(prev => ({ ...prev, imagen: reader.result as string }));
-      toast.success("Imagen cargada correctamente")
-    };
-    reader.onerror = () => {
-      toast.error("Error al leer el archivo")
-    };
+    reader.readAsDataURL(e.target.files[0]);
+    reader.onload = () => setNuevo(prev => ({ ...prev, imagen: reader.result as string }));
   };
 
   const agregar = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!nuevo.nombre || !nuevo.precio) return toast.error("Nombre y precio son obligatorios")
-    if (!nuevo.imagen) return toast.error("Por favor, subí una foto del plato")
-    
+    if (!nuevo.nombre || !nuevo.precio || !nuevo.imagen) return toast.error("Completá nombre, precio y foto");
     try {
-      await push(ref(db, 'productos'), {
-        ...nuevo,
-        precio: Number(nuevo.precio)
-      })
-      setNuevo({ nombre: "", precio: "", categoria: "Comidas", imagen: "", descripcion: "" })
-      toast.success("¡Producto publicado!")
-    } catch (error) {
-      toast.error("Error al conectar con la nube")
-    }
+      await push(ref(db, 'productos'), { ...nuevo, precio: Number(nuevo.precio) });
+      setNuevo({ nombre: "", precio: "", categoria: "Principales", imagen: "", descripcion: "" });
+      toast.success("¡Plato publicado!");
+    } catch (e) { toast.error("Error al guardar"); }
   }
 
-  const borrar = (id: string) => {
-    if(confirm("¿Estás seguro de eliminar este producto?")) {
-      remove(ref(db, `productos/${id}`))
-      toast.info("Producto eliminado")
-    }
+  const iniciarEdicion = (p: any) => {
+    setEditandoId(p.id);
+    setEditForm({ precio: p.precio.toString(), descripcion: p.descripcion || "" });
+  }
+
+  const guardarEdicion = async (id: string) => {
+    try {
+      await update(ref(db, `productos/${id}`), {
+        precio: Number(editForm.precio),
+        descripcion: editForm.descripcion
+      });
+      setEditandoId(null);
+      toast.success("Actualizado correctamente");
+    } catch (e) { toast.error("Error al actualizar"); }
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto animate-in fade-in duration-500 mb-20">
-      <div className="flex justify-between items-center mb-10 gap-4 bg-white p-6 rounded-[2rem] shadow-sm border border-orange-100">
-        <div>
-          <h1 className="text-4xl font-black text-slate-900 uppercase italic tracking-tighter">Panel de Control</h1>
-          <p className="text-[10px] font-bold text-orange-600 uppercase tracking-[0.2em]">San Vicente / Gestión de Menú</p>
-        </div>
-        <Link to="/admin/qrs">
-          <Button variant="outline" className="font-black uppercase text-[10px] h-12 rounded-xl border-slate-200 shadow-sm px-6">
-            <QrCode size={18} className="mr-2 text-orange-600"/> Generar QRs
-          </Button>
-        </Link>
+    <div className="p-4 md:p-6 max-w-7xl mx-auto mb-20 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+        <h1 className="text-4xl font-black text-slate-900 uppercase italic tracking-tighter">Gestión RestoWeb</h1>
+        <Link to="/admin/qrs"><Button className="bg-orange-600 font-black uppercase rounded-xl h-12 px-8 shadow-lg shadow-orange-100"><QrCode className="mr-2"/> Panel QRs</Button></Link>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
+        {/* FORMULARIO DE CARGA */}
         <div className="xl:col-span-1">
-          <Card className="rounded-[2.5rem] border-none shadow-2xl bg-white sticky top-28">
-            <CardHeader className="text-center pt-8 pb-4">
-              <CardTitle className="uppercase font-black text-xs text-slate-400 italic tracking-widest">Nuevo Producto</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={agregar} className="space-y-5">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase ml-2 text-slate-400">Foto</label>
-                  {nuevo.imagen ? (
-                    <div className="relative h-40 rounded-2xl overflow-hidden shadow-inner group border border-slate-100">
-                      <img src={nuevo.imagen} className="w-full h-full object-cover" />
-                      <button type="button" onClick={() => setNuevo(prev => ({...prev, imagen: ""}))} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Trash2 className="text-white" size={24}/>
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="border-2 border-dashed border-slate-200 rounded-2xl h-40 flex flex-col items-center justify-center text-center cursor-pointer hover:border-orange-500 hover:bg-orange-50/50 transition-colors p-6 group">
-                      <UploadCloud size={32} className="text-slate-300 group-hover:text-orange-500 mb-2"/>
-                      <span className="text-[11px] font-bold text-slate-500">Subir desde la PC</span>
-                      <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-                    </label>
-                  )}
-                </div>
+          <Card className="rounded-[3rem] border-none shadow-2xl bg-white overflow-hidden sticky top-28">
+            <div className="bg-slate-900 p-6 text-center"><h2 className="text-white font-black uppercase italic tracking-widest text-xs">Nuevo Item al Menú</h2></div>
+            <CardContent className="p-8 space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Foto del Producto</label>
+                {nuevo.imagen ? (
+                  <div className="relative h-44 rounded-3xl overflow-hidden border-2 border-slate-50 group">
+                    <img src={nuevo.imagen} className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => setNuevo(prev => ({...prev, imagen: ""}))} className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="text-white" /></button>
+                  </div>
+                ) : (
+                  <label className="border-2 border-dashed border-slate-100 rounded-3xl h-44 flex flex-col items-center justify-center cursor-pointer hover:bg-orange-50/30 transition-all group">
+                    <UploadCloud className="text-slate-200 group-hover:text-orange-500 mb-2" size={32} />
+                    <span className="text-[10px] font-black uppercase text-slate-400">Subir Imagen</span>
+                    <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                  </label>
+                )}
+              </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase ml-2 text-slate-400">Nombre</label>
-                  <Input className="rounded-xl border-slate-100 h-11" placeholder="Ej: Pizza Muzzarella" value={nuevo.nombre} onChange={e => setNuevo({...nuevo, nombre: e.target.value})} />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2 space-y-1">
+                  <Input className="rounded-2xl border-slate-100 h-12 font-bold" placeholder="Nombre del plato" value={nuevo.nombre} onChange={e => setNuevo({...nuevo, nombre: e.target.value})} />
                 </div>
-                
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase ml-2 text-slate-400">Precio ($)</label>
-                  <Input className="rounded-xl border-slate-100 h-11" type="number" placeholder="5500" value={nuevo.precio} onChange={e => setNuevo({...nuevo, precio: e.target.value})} />
+                <Input className="rounded-2xl border-slate-100 h-12 font-bold" type="number" placeholder="Precio $" value={nuevo.precio} onChange={e => setNuevo({...nuevo, precio: e.target.value})} />
+                <select className="border border-slate-100 rounded-2xl h-12 px-4 text-xs font-black uppercase bg-slate-50" value={nuevo.categoria} onChange={e => setNuevo({...nuevo, categoria: e.target.value})}>
+                  {CATEGORIAS_MENU.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
+              {nuevo.categoria === "Pastas caseras" && (
+                <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100">
+                  <p className="text-[9px] font-black uppercase text-orange-600 mb-2 italic">Subcategoría (Salsas automáticas)</p>
+                  <div className="flex flex-wrap gap-2">
+                    {SUBSALSAS.map(s => <Badge key={s} variant="outline" className="bg-white text-[8px] font-black">{s}</Badge>)}
+                  </div>
                 </div>
-                
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase ml-2 text-slate-400">Categoría</label>
-                  <select className="w-full border border-slate-100 rounded-xl h-11 px-3 text-sm font-bold bg-white focus:ring-2 ring-orange-500 shadow-inner" value={nuevo.categoria} onChange={e => setNuevo({...nuevo, categoria: e.target.value})}>
-                    {CATEGORIAS_COMPLETAS.map(c => (
-                      <option key={c.nombre}>{c.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase ml-2 text-slate-400">Descripción / Ingredientes</label>
-                  <textarea 
-                    className="w-full border border-slate-100 rounded-2xl p-4 text-sm font-bold focus:ring-2 ring-orange-500 min-h-[100px] outline-none shadow-inner"
-                    placeholder="Detalles del plato..."
-                    value={nuevo.descripcion} 
-                    onChange={e => setNuevo({...nuevo, descripcion: e.target.value})} 
-                  />
-                </div>
-                
-                <Button type="submit" className="w-full bg-slate-900 text-white h-16 font-black uppercase rounded-2xl shadow-xl hover:bg-orange-600 transition-colors">
-                  <Plus className="mr-2"/> Publicar Menú
-                </Button>
-              </form>
+              )}
+
+              <textarea className="w-full border border-slate-100 rounded-2xl p-4 text-sm font-bold min-h-[100px] outline-none shadow-inner" placeholder="Descripción / Ingredientes..." value={nuevo.descripcion} onChange={e => setNuevo({...nuevo, descripcion: e.target.value})} />
+              <Button onClick={agregar} className="w-full bg-slate-900 h-16 font-black uppercase rounded-2xl shadow-xl hover:bg-orange-600 transition-all"><Plus className="mr-2"/> Publicar Plato</Button>
             </CardContent>
           </Card>
         </div>
 
-        <div className="xl:col-span-2">
-          <div className="space-y-5">
-            <h2 className="text-2xl font-black uppercase italic tracking-tighter text-slate-900 ml-4">Productos en Línea</h2>
-            {productos.map(p => (
-              <div key={p.id} className="flex justify-between items-center bg-white p-5 rounded-3xl shadow-sm border border-slate-50 group hover:shadow-md transition-all">
-                <div className="flex items-center gap-4">
-                  <img src={p.imagen} className="w-16 h-16 rounded-2xl object-cover" alt={p.nombre} />
-                  <div>
-                    <p className="font-black uppercase italic text-[13px] text-slate-800 tracking-tighter">{p.nombre}</p>
-                    <p className="text-[11px] text-orange-600 font-black italic mt-1">${p.precio.toLocaleString('es-AR')}</p>
-                  </div>
-                </div>
-                <Button variant="ghost" onClick={() => borrar(p.id)} className="text-red-200 hover:text-red-600 hover:bg-red-50 rounded-xl h-11 w-11 p-0">
-                  <Trash2 size={20}/>
-                </Button>
-              </div>
-            ))}
+        {/* LISTADO CON EDICIÓN EN LÍNEA */}
+        <div className="xl:col-span-2 space-y-6">
+          <div className="flex items-center gap-4 ml-6 mb-4">
+            <UtensilsCrossed className="text-orange-600" />
+            <h2 className="text-3xl font-black uppercase italic tracking-tighter">Menú Publicado</h2>
           </div>
+
+          {productos.map(p => (
+            <div key={p.id} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-50 flex flex-col md:flex-row gap-6 items-center group hover:shadow-md transition-all">
+              <img src={p.imagen} className="w-24 h-24 rounded-[2rem] object-cover shadow-inner" />
+              
+              <div className="flex-1 space-y-2 text-center md:text-left">
+                <div className="flex flex-col md:flex-row md:items-center gap-2">
+                  <p className="font-black uppercase italic text-lg tracking-tighter">{p.nombre}</p>
+                  <Badge className="w-fit mx-auto md:mx-0 bg-slate-100 text-slate-400 font-black text-[9px] border-none uppercase">{p.categoria}</Badge>
+                </div>
+
+                {editandoId === p.id ? (
+                  <div className="space-y-3 mt-2">
+                    <Input className="h-10 rounded-xl font-bold border-orange-200" type="number" value={editForm.precio} onChange={e => setEditForm({...editForm, precio: e.target.value})} />
+                    <textarea className="w-full border border-orange-200 rounded-xl p-3 text-xs font-bold" value={editForm.descripcion} onChange={e => setEditForm({...editForm, descripcion: e.target.value})} />
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-xl font-black text-orange-600 italic tracking-tighter">${p.precio}</p>
+                    <p className="text-[10px] font-bold text-slate-400 italic line-clamp-1">{p.descripcion || "Sin descripción cargada"}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                {editandoId === p.id ? (
+                  <>
+                    <Button onClick={() => guardarEdicion(p.id)} className="bg-green-600 rounded-xl h-12 w-12 p-0"><Save size={20}/></Button>
+                    <Button onClick={() => setEditandoId(null)} variant="ghost" className="rounded-xl h-12 w-12 p-0 border border-slate-100"><X size={20}/></Button>
+                  </>
+                ) : (
+                  <>
+                    <Button onClick={() => iniciarEdicion(p)} variant="ghost" className="text-slate-300 hover:text-orange-600 hover:bg-orange-50 rounded-xl h-12 w-12 p-0"><Edit3 size={20}/></Button>
+                    <Button onClick={() => confirm("¿Eliminar?") && remove(ref(db, `productos/${p.id}`))} variant="ghost" className="text-slate-200 hover:text-red-600 hover:bg-red-50 rounded-xl h-12 w-12 p-0"><Trash2 size={20}/></Button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
