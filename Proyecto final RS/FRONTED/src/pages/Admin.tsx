@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, QrCode, UploadCloud, UtensilsCrossed, Edit3, Save, X, Megaphone, Star } from "lucide-react"
+import { Plus, Trash2, QrCode, UploadCloud, UtensilsCrossed, Edit3, Save, X, Megaphone, Star, DollarSign } from "lucide-react"
 import { Link } from "react-router-dom"
 import { ref, push, remove, update, onValue, set } from "firebase/database"
 import { db } from "../lib/firebase"
@@ -20,10 +20,9 @@ export default function Admin({ productos }: { productos: any[] }) {
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ precio: "", descripcion: "" })
   
-  // ESTADO PARA LA PROMO
-  const [promo, setPromo] = useState({ activa: false, titulo: "", mensaje: "", imagen: "" })
+  // ESTADO PARA LA PROMO CON PRECIO
+  const [promo, setPromo] = useState({ activa: false, titulo: "", mensaje: "", imagen: "", precio: "" })
 
-  // LEER PROMO ACTUAL
   useEffect(() => {
     const promoRef = ref(db, 'config/promo');
     onValue(promoRef, (snapshot) => {
@@ -31,13 +30,12 @@ export default function Admin({ productos }: { productos: any[] }) {
     });
   }, [])
 
-  // GUARDAR PROMO (Sincronización total)
   const guardarPromo = async () => {
     try {
       await set(ref(db, 'config/promo'), promo);
-      toast.success("Promoción actualizada y sincronizada");
+      toast.success("Promoción sincronizada");
     } catch (e) {
-      toast.error("Error al sincronizar promo");
+      toast.error("Error al sincronizar");
     }
   }
 
@@ -68,7 +66,7 @@ export default function Admin({ productos }: { productos: any[] }) {
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto mb-20 animate-in fade-in duration-500">
       
-      {/* SECCIÓN PROMO TEMPORAL */}
+      {/* SECCIÓN PROMO CON CAMPO DE PRECIO */}
       <Card className="mb-10 rounded-[2.5rem] border-none shadow-xl bg-slate-900 text-white overflow-hidden border-b-4 border-orange-600">
         <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           <div className="space-y-4">
@@ -76,8 +74,16 @@ export default function Admin({ productos }: { productos: any[] }) {
               <Megaphone size={20} className="animate-pulse" />
               <h2 className="font-black uppercase italic text-xl tracking-tighter text-white">Anuncio del Día</h2>
             </div>
-            <Input className="bg-white/10 border-white/10 text-white h-12 rounded-xl" placeholder="Título (Ej: ¡SÁBADO DE PIZZAS!)" value={promo.titulo} onChange={e => setPromo({...promo, titulo: e.target.value})} />
-            <textarea className="w-full bg-white/10 border-white/10 text-white rounded-xl p-3 text-sm min-h-[80px] outline-none" placeholder="Descripción de la oferta..." value={promo.mensaje} onChange={e => setPromo({...promo, mensaje: e.target.value})} />
+            <Input className="bg-white/10 border-white/10 text-white h-12 rounded-xl" placeholder="Título (Ej: COMBO CERVECERO)" value={promo.titulo} onChange={e => setPromo({...promo, titulo: e.target.value})} />
+            
+            <div className="flex gap-3">
+              <div className="relative flex-1">
+                <DollarSign className="absolute left-3 top-3.5 text-orange-500" size={16} />
+                <Input className="bg-white/10 border-white/10 text-white h-12 rounded-xl pl-10" placeholder="Precio de Oferta" type="number" value={promo.precio} onChange={e => setPromo({...promo, precio: e.target.value})} />
+              </div>
+              <textarea className="flex-[2] bg-white/10 border-white/10 text-white rounded-xl p-3 text-sm min-h-[48px] outline-none" placeholder="Descripción breve..." value={promo.mensaje} onChange={e => setPromo({...promo, mensaje: e.target.value})} />
+            </div>
+
             <div className="flex gap-4">
               <Button onClick={() => setPromo({...promo, activa: !promo.activa})} className={`${promo.activa ? 'bg-orange-600' : 'bg-slate-700'} font-black rounded-xl uppercase flex-1 h-12`}>
                 {promo.activa ? "OFERTA VISIBLE" : "OFERTA OCULTA"}
@@ -93,7 +99,6 @@ export default function Admin({ productos }: { productos: any[] }) {
       </Card>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
-        {/* CARGA DE PRODUCTO */}
         <div className="xl:col-span-1">
           <Card className="rounded-[3rem] border-none shadow-2xl bg-white sticky top-28 overflow-hidden">
             <div className="bg-orange-600 p-6 text-center text-white font-black uppercase text-xs italic tracking-widest">Nuevo Plato</div>
@@ -115,7 +120,6 @@ export default function Admin({ productos }: { productos: any[] }) {
           </Card>
         </div>
 
-        {/* LISTADO */}
         <div className="xl:col-span-2 space-y-4">
           <h2 className="text-2xl font-black uppercase italic ml-4 flex items-center gap-2"><Star className="text-orange-600"/> Menú del Día</h2>
           {productos.map(p => (
