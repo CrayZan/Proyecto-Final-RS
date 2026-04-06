@@ -8,7 +8,7 @@ import {
   CreditCard, Banknote, Navigation, Copy, Check, Loader2, X 
 } from "lucide-react"
 import { toast } from "sonner"
-import { ref, push, onValue } from "firebase/database"
+import { ref, push } from "firebase/database"
 import { db } from "../lib/firebase"
 
 // --- CONFIGURACIÓN CENTRALIZADA ---
@@ -32,9 +32,7 @@ export default function Menu({ productos }: { productos: any[] }) {
   const [catSeleccionada, setCatSeleccionada] = useState("Todas")
 
   const total = carrito.reduce((acc, item) => acc + (item.precio * item.cant), 0)
-  const categorias = ["Todas", ...new Set(productos.map(p => p.categoria))]
 
-  // --- FUNCIÓN PARA ELIMINAR DEL CARRITO ---
   const eliminarDelCarrito = (index: number) => {
     const nuevoCarrito = [...carrito];
     nuevoCarrito.splice(index, 1);
@@ -43,21 +41,18 @@ export default function Menu({ productos }: { productos: any[] }) {
   };
 
   const obtenerUbicacion = () => {
-    if (!navigator.geolocation) {
-      return toast.error("Tu navegador no soporta geolocalización")
-    }
+    if (!navigator.geolocation) return toast.error("Tu navegador no soporta geolocalización")
     const toastId = toast.loading("Obteniendo tu ubicación exacta...")
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords
-        const mapUrl = `https://www.google.com/maps?q=${latitude},${longitude}`
-        setDireccion(mapUrl)
+        setDireccion(`https://www.google.com/maps?q=${latitude},${longitude}`)
         toast.dismiss(toastId)
-        toast.success("Ubicación fijada correctamente")
+        toast.success("Ubicación fijada")
       },
-      (error) => {
+      () => {
         toast.dismiss(toastId)
-        toast.error("Error al obtener la ubicación")
+        toast.error("Error al obtener ubicación")
       },
       { enableHighAccuracy: true, timeout: 10000 }
     )
@@ -66,7 +61,7 @@ export default function Menu({ productos }: { productos: any[] }) {
   const copiarAlias = () => {
     navigator.clipboard.writeText(DATOS_PAGO.alias)
     setCopiado(true)
-    toast.success("Alias copiado al portapapeles")
+    toast.success("Alias copiado")
     setTimeout(() => setCopiado(false), 2000)
   }
 
@@ -75,32 +70,7 @@ export default function Menu({ productos }: { productos: any[] }) {
     if (entrega === 'mesa' && !numeroMesa) return toast.error("Por favor, ingresá el N° de Mesa")
     if (entrega === 'delivery' && !direccion) return toast.error("Falta la dirección o ubicación")
 
-    if (entrega !== 'mesa' && metodoPago === 'mercadopago') {
-      setLoadingMP(true)
-      try {
-        const response = await fetch(DATOS_PAGO.urlBackendMP, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            items: carrito.map(item => ({
-              title: item.nombre,
-              unit_price: Number(item.precio),
-              quantity: Number(item.cant)
-            })),
-            total: total 
-          })
-        })
-        const data = await response.json()
-        if (data.init_point) {
-          window.location.href = data.init_point 
-          return
-        }
-      } catch (err) {
-        setLoadingMP(false)
-        return toast.error("Error al conectar con Mercado Pago")
-      }
-    }
-
+    // 1. Preparamos el objeto del pedido
     const pedidoData = {
       items: carrito,
       total,
@@ -108,11 +78,45 @@ export default function Menu({ productos }: { productos: any[] }) {
       metodoPago: entrega === 'mesa' ? 'presencial' : metodoPago,
       destino: entrega === 'mesa' ? `Mesa ${numeroMesa}` : direccion,
       hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
-      estado: "pendiente"
+      estado: "pendiente",
+      pagoConfirmado: false 
     }
 
     try {
-      await push(ref(db, 'pedidos'), pedidoData)
+      setLoadingMP(true)
+
+      // 2. GUARDAMOS PRIMERO EN FIREBASE (Aparece en el panel inmediatamente)
+      const nuevoPedidoRef = await push(ref(db, 'pedidos'), pedidoData)
+      const pedidoId = nuevoPedidoRef.key
+
+      // 3. SI ES MERCADO PAGO, REDIRIGIMOS
+      if (entrega !== 'mesa' && metodoPago === 'mercadopago') {
+        try {
+          const response = await fetch(DATOS_PAGO.urlBackendMP, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              items: carrito.map(item => ({
+                title: item.nombre,
+                unit_price: Number(item.precio),
+                quantity: Number(item.cant)
+              })),
+              external_reference: pedidoId, // Referencia para vincular el pago al pedido
+              total: total 
+            })
+          })
+          const data = await response.json()
+          if (data.init_point) {
+            window.location.href = data.init_point 
+            return
+          }
+        } catch (err) {
+          setLoadingMP(false)
+          return toast.error("Error al conectar con Mercado Pago")
+        }
+      }
+
+      // 4. SI NO ES MP (O PAGO EN MESA), TERMINAMOS EL FLUJO AQUÍ
       let mensajeWA = `*NUEVO PEDIDO - ${entrega.toUpperCase()}*%0A`
       mensajeWA += `*Pago:* ${pedidoData.metodoPago.toUpperCase()}%0A`
       mensajeWA += `*Destino:* ${pedidoData.destino}%0A%0A`
@@ -121,18 +125,19 @@ export default function Menu({ productos }: { productos: any[] }) {
 
       window.open(`https://wa.me/542966249538?text=${mensajeWA}`, '_blank')
       setCarrito([])
+      setLoadingMP(false)
       toast.success("¡Pedido enviado!")
+
     } catch (e) {
-      toast.error("Error al guardar en la base de datos")
+      setLoadingMP(false)
+      toast.error("Error al procesar el pedido")
     }
   }
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto pb-40 animate-in fade-in duration-500">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        
         <div className="lg:col-span-3 space-y-6">
-          {/* Selector de Entrega */}
           <div className="bg-white p-2 rounded-[2rem] shadow-sm border border-slate-100 flex gap-2">
             {[
               { id: 'mesa', icon: Utensils, label: 'En Mesa' },
@@ -150,7 +155,6 @@ export default function Menu({ productos }: { productos: any[] }) {
             ))}
           </div>
 
-          {/* Input de Destino */}
           <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-orange-50">
             {entrega === 'mesa' ? (
               <input 
@@ -165,7 +169,7 @@ export default function Menu({ productos }: { productos: any[] }) {
                   className="flex-1 bg-slate-50 rounded-xl px-4 font-bold text-sm h-12 border-none" 
                   value={direccion} onChange={e => setDireccion(e.target.value)} 
                 />
-                <Button onClick={obtenerUbicacion} variant="outline" className="h-12 w-12 rounded-xl border-orange-100 text-orange-600 shadow-sm active:scale-90">
+                <Button onClick={obtenerUbicacion} variant="outline" className="h-12 w-12 rounded-xl border-orange-100 text-orange-600 shadow-sm">
                   <Navigation size={18} />
                 </Button>
               </div>
@@ -174,7 +178,6 @@ export default function Menu({ productos }: { productos: any[] }) {
             )}
           </div>
 
-          {/* Grilla de Productos */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {productos.filter(p => catSeleccionada === "Todas" || p.categoria === catSeleccionada).map(p => (
               <Card key={p.id} className="rounded-[2rem] overflow-hidden border-none shadow-sm bg-white">
@@ -191,7 +194,6 @@ export default function Menu({ productos }: { productos: any[] }) {
           </div>
         </div>
 
-        {/* --- COLUMNA DEL CARRITO Y PAGO --- */}
         <div className="lg:col-span-1">
           <Card className="rounded-[2.5rem] shadow-2xl border-none sticky top-24 bg-white overflow-hidden border-t-4 border-orange-500">
             <div className="bg-slate-900 p-6 text-center text-white">
@@ -200,7 +202,6 @@ export default function Menu({ productos }: { productos: any[] }) {
             </div>
             
             <CardContent className="p-5 space-y-6">
-              {/* Lista Detallada de Productos */}
               <div className="space-y-3">
                 <p className="text-[9px] font-black text-slate-400 uppercase text-center italic">Items Seleccionados</p>
                 <ScrollArea className="h-[200px] pr-2">
@@ -209,7 +210,7 @@ export default function Menu({ productos }: { productos: any[] }) {
                   ) : (
                     <div className="space-y-2">
                       {carrito.map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-slate-100 animate-in slide-in-from-right-2">
+                        <div key={idx} className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl border border-slate-100">
                           <div className="flex flex-col">
                             <span className="text-[10px] font-black uppercase italic leading-tight">{item.nombre}</span>
                             <span className="text-[10px] font-bold text-orange-600">${item.precio.toLocaleString()}</span>
@@ -226,7 +227,6 @@ export default function Menu({ productos }: { productos: any[] }) {
 
               <hr className="border-slate-100" />
 
-              {/* Métodos de Pago */}
               {entrega !== 'mesa' ? (
                 <div className="space-y-4">
                   <p className="text-[9px] font-black text-slate-400 uppercase text-center italic">Método de Pago</p>
@@ -244,7 +244,7 @@ export default function Menu({ productos }: { productos: any[] }) {
                   {metodoPago === 'transferencia' && (
                     <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-[8px] font-black text-blue-900 uppercase">Alias: {DATOS_PAGO.alias}</span>
+                        <span className="text-[8px] font-black text-blue-900 uppercase italic">Alias: {DATOS_PAGO.alias}</span>
                         <Button onClick={copiarAlias} size="sm" className="bg-blue-600 h-8 w-8 p-0">
                           {copiado ? <Check size={14}/> : <Copy size={14}/>}
                         </Button>
@@ -263,7 +263,7 @@ export default function Menu({ productos }: { productos: any[] }) {
                 disabled={loadingMP}
                 className={`w-full h-14 rounded-2xl font-black text-xs uppercase italic shadow-xl transition-all ${metodoPago === 'mercadopago' && entrega !== 'mesa' ? 'bg-sky-400 hover:bg-sky-500' : 'bg-green-600 hover:bg-green-700'}`}
               >
-                {loadingMP ? <Loader2 className="animate-spin" /> : 
+                {loadingMP && metodoPago === 'mercadopago' ? <Loader2 className="animate-spin" /> : 
                  entrega === 'mesa' ? 'ENVIAR PEDIDO A COCINA' : 
                  metodoPago === 'mercadopago' ? 'PAGAR CON MERCADO PAGO' : 'ENVIAR PEDIDO'}
               </Button>
