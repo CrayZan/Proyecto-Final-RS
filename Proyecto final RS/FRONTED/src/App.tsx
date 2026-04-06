@@ -4,10 +4,11 @@ import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/comp
 import { Badge } from "@/components/ui/badge"
 import { UtensilsCrossed, ShoppingBag, Settings } from "lucide-react"
 
-// IMPORTAMOS TU NUEVA PÁGINA
+// IMPORTAMOS TUS PÁGINAS
 import Menu from "./pages/Menu"
+import Admin from "./pages/Admin"
 
-// Componente de la pantalla de inicio
+// Componente de la pantalla de inicio (Home)
 function Home() {
   return (
     <main className="flex-1 max-w-4xl mx-auto w-full p-6 py-12 animate-in fade-in duration-700">
@@ -55,14 +56,15 @@ function Home() {
   )
 }
 
-// Estructura principal con el Navegador
+// ESTRUCTURA PRINCIPAL DE LA APP
 export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+      {/* Navbar Global */}
       <header className="border-b bg-white/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4 flex justify-between items-center shadow-sm">
         <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <UtensilsCrossed className="h-6 w-6 text-orange-600" />
-          <span className="text-xl font-bold tracking-tighter">RESTOWEB</span>
+          <span className="text-xl font-bold tracking-tighter text-slate-900">RESTOWEB</span>
         </Link>
         <div className="flex items-center gap-3">
           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 animate-pulse">
@@ -71,15 +73,15 @@ export default function App() {
         </div>
       </header>
 
+      {/* RUTAS: Aquí se decide qué página mostrar */}
       <Routes>
         <Route path="/" element={<Home />} />
-        {/* Aquí conectamos tu nueva página */}
         <Route path="/menu" element={<Menu />} />
-        <Route path="/admin" element={<div className="p-20 text-center">⚙️ Panel de Administración en desarrollo...</div>} />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
 
       <footer className="py-8 text-center text-sm text-muted-foreground border-t bg-white mt-auto">
-        © 2026 RestoWeb Argentina - Tecnología para Gastronomía
+        © 2026 RestoWeb Argentina - San Vicente, Misiones
       </footer>
     </div>
   )
