@@ -52,16 +52,103 @@ export default function Admin() {
         {/* DIÁLOGO PARA NUEVO PRODUCTO */}
         <Dialog>
           <DialogTrigger asChild>
-            <Button className="bg-orange-600 hover:bg-orange-700 shadow-lg">
+            <Button className="bg-orange-600 hover:bg-orange-700 shadow-lg font-bold">
               <Plus className="mr-2 h-4 w-4" /> Nuevo Producto
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Agregar Nuevo Producto</DialogTitle>
-              <DialogDescription>Carga un nuevo ítem al sistema de ventas.</DialogDescription>
+              <DialogDescription>Carga un nuevo ítem al sistema.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="name">Nombre</Label>
-                <Input id="
+                <Label htmlFor="new-name">Nombre</Label>
+                <Input id="new-name" placeholder="Ej: Pizza Especial" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="new-price">Precio (ARS)</Label>
+                <Input id="new-price" type="number" placeholder="0.00" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => alert("Guardado")} className="bg-orange-600">Guardar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="relative mb-6">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input 
+          placeholder="Buscar producto..." 
+          className="pl-10 max-w-md bg-white border-slate-200" 
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
+      </div>
+
+      <Card className="shadow-xl border-none overflow-hidden">
+        <CardHeader className="bg-slate-900 text-white">
+          <CardTitle>Inventario</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader className="bg-slate-50">
+              <TableRow>
+                <TableHead className="font-bold">Producto</TableHead>
+                <TableHead className="font-bold text-right">Precio</TableHead>
+                <TableHead className="font-bold text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {productosFiltrados.map((p) => (
+                <TableRow key={p.id} className="hover:bg-slate-50/50">
+                  <TableCell className="font-medium">{p.nombre}</TableCell>
+                  <TableCell className="text-right font-bold text-orange-600">
+                    ${p.precio.toLocaleString('es-AR')}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="icon" className="h-8 w-8">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Editar {p.nombre}</DialogTitle>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                              <Label>Precio Nuevo</Label>
+                              <Input type="number" defaultValue={p.precio} />
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button className="bg-slate-900">Guardar Cambios</Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="h-8 w-8 text-red-500 hover:bg-red-50"
+                        onClick={() => eliminarProducto(p.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
