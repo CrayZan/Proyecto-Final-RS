@@ -52,7 +52,7 @@ export default function GeneradorQR() {
     }
   }
 
-  const URL_BASE = window.location.origin
+  const URL_BASE = "https://proyecto-final-rs.vercel.app"
 
   return (
     <div className="p-6 max-w-5xl mx-auto animate-in fade-in duration-500">
