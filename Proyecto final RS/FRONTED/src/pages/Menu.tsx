@@ -18,7 +18,7 @@ const DATOS_PAGO = {
   urlBackendMP: "https://proyecto-final-rs.onrender.com/api/payments/create_preference" 
 }
 
-export default function Menu({ productos, tema }: { productos: any[], tema: any }) {
+export default function Menu({ productos, tema, perfil }: { productos: any[], tema: any, perfil: any }) {
   const [searchParams] = useSearchParams()
   const [carrito, setCarrito] = useState<any[]>([])
   const [copiado, setCopiado] = useState(false)
@@ -30,6 +30,9 @@ export default function Menu({ productos, tema }: { productos: any[], tema: any 
   const [direccion, setDireccion] = useState("")
   const [catSeleccionada, setCatSeleccionada] = useState("Todas")
   const [promoPublicada, setPromoPublicada] = useState<any>(null)
+
+  // Obtener categorías únicas de los productos
+  const categoriasUnicas = ["Todas", ...new Set(productos.map(p => p.categoria))];
 
   useEffect(() => {
     const promoRef = ref(db, 'config/promo')
@@ -120,6 +123,7 @@ export default function Menu({ productos, tema }: { productos: any[], tema: any 
       }
 
       let mensajeWA = `*NUEVO PEDIDO - ${entrega.toUpperCase()}*%0A`
+      mensajeWA += `*Local:* ${perfil?.nombreLocal || 'RestoWeb'}%0A`
       mensajeWA += `*Pago:* ${pedidoData.metodoPago.toUpperCase()}%0A`
       mensajeWA += `*Destino:* ${pedidoData.destino}%0A%0A`
       mensajeWA += carrito.map(i => `• ${i.cant}x ${i.nombre}`).join('%0A')
@@ -137,6 +141,18 @@ export default function Menu({ productos, tema }: { productos: any[], tema: any 
 
   return (
     <div className={`p-4 md:p-6 max-w-7xl mx-auto pb-40 animate-in fade-in duration-500 ${tema.bgPage}`}>
+      
+      {/* HEADER DINÁMICO */}
+      <div className="flex flex-col items-center mb-10 text-center">
+        {perfil?.logoUrl && (
+          <img src={perfil.logoUrl} alt="Logo" className="w-24 h-24 rounded-3xl object-cover shadow-2xl mb-4 border-4 border-white" />
+        )}
+        <h1 className={`text-5xl font-black uppercase italic tracking-tighter ${tema.text}`}>
+          {perfil?.nombreLocal || "RestoWeb"}
+        </h1>
+        <div className={`h-1 w-20 ${tema.accent} rounded-full mt-2`}></div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 space-y-6">
           
@@ -158,43 +174,67 @@ export default function Menu({ productos, tema }: { productos: any[], tema: any 
             ))}
           </div>
 
-          {/* INPUT DE UBICACIÓN */}
-          <div className={`${tema.bgHeader} p-6 rounded-[2rem] shadow-sm border ${tema.border}`}>
+          {/* INPUT DE UBICACIÓN / MESA */}
+          <div className={`${tema.bgHeader} p-6 rounded-[2.5rem] shadow-sm border ${tema.border} flex items-center gap-4`}>
             {entrega === 'mesa' ? (
-              <input 
-                placeholder="ESCRIBÍ TU N° DE MESA..." 
-                className={`text-xl font-black uppercase italic w-full bg-transparent border-none focus:ring-0 ${tema.text}`}
-                value={numeroMesa} onChange={e => setNumeroMesa(e.target.value)}
-              />
-            ) : entrega === 'delivery' ? (
-              <div className="flex gap-2">
+              <>
+                <div className={`${tema.accent} p-3 rounded-2xl`}>
+                   <Utensils size={20} />
+                </div>
                 <input 
-                  placeholder="DIRECCIÓN O LINK DE MAPA..." 
-                  className={`flex-1 bg-black/5 rounded-xl px-4 font-bold text-sm h-12 border-none ${tema.text}`} 
+                  placeholder="NÚMERO DE MESA..." 
+                  className={`text-xl font-black uppercase italic w-full bg-transparent border-none focus:ring-0 ${tema.text}`}
+                  value={numeroMesa} onChange={e => setNumeroMesa(e.target.value)}
+                />
+              </>
+            ) : entrega === 'delivery' ? (
+              <div className="flex gap-2 w-full">
+                <input 
+                  placeholder="DIRECCIÓN DE ENTREGA..." 
+                  className={`flex-1 bg-black/5 rounded-2xl px-4 font-bold text-sm h-14 border-none ${tema.text}`} 
                   value={direccion} onChange={e => setDireccion(e.target.value)} 
                 />
-                <Button onClick={obtenerUbicacion} variant="outline" className={`h-12 w-12 rounded-xl ${tema.border} ${tema.primary} shadow-sm`}>
-                  <Navigation size={18} />
+                <Button onClick={obtenerUbicacion} variant="outline" className={`h-14 w-14 rounded-2xl ${tema.border} ${tema.primary} shadow-sm`}>
+                  <Navigation size={20} />
                 </Button>
               </div>
             ) : (
-              <p className={`text-center font-black opacity-40 italic uppercase text-xs ${tema.text}`}>Retiro por local - Te avisamos por WhatsApp</p>
+              <p className={`w-full text-center font-black opacity-40 italic uppercase text-xs ${tema.text}`}>Retiro por local - Avisamos por WhatsApp</p>
             )}
           </div>
 
-          {/* PROMO */}
+          {/* CATEGORÍAS */}
+          <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar">
+            {categoriasUnicas.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setCatSeleccionada(cat)}
+                className={`px-6 py-3 rounded-2xl font-black uppercase italic text-[10px] whitespace-nowrap transition-all border ${catSeleccionada === cat ? `${tema.accent} border-transparent shadow-lg` : `${tema.bgHeader} ${tema.text} opacity-40 border-transparent`}`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* PROMO DEL DÍA */}
           {promoPublicada && (
-            <Card className={`rounded-[2rem] overflow-hidden border-none shadow-xl animate-in zoom-in duration-500 ${tema.bgHeader}`}>
+            <Card className={`rounded-[2.5rem] overflow-hidden border-none shadow-2xl animate-in zoom-in duration-500 ${tema.bgHeader} border-l-8 ${tema.border.replace('border-', 'border-l-')}`}>
               <div className="flex flex-col md:flex-row">
-                <div className="md:w-1/3 h-40 md:h-auto"><img src={promoPublicada.imagen} className="w-full h-full object-cover opacity-80" alt="Promo" /></div>
-                <CardContent className="p-6 flex-1 flex flex-col justify-center">
-                  <h2 className={`text-2xl font-black uppercase italic ${tema.primary}`}>{promoPublicada.titulo}</h2>
-                  <p className={`text-[10px] opacity-60 font-bold uppercase mb-4 ${tema.text}`}>{promoPublicada.mensaje}</p>
+                <div className="md:w-1/3 h-48 md:h-auto"><img src={promoPublicada.imagen} className="w-full h-full object-cover" alt="Promo" /></div>
+                <CardContent className="p-8 flex-1 flex flex-col justify-center relative">
+                  <div className="absolute top-4 right-4 rotate-12">
+                    <span className="bg-red-500 text-white font-black px-4 py-1 rounded-full text-[10px] uppercase italic shadow-lg">Oferta!</span>
+                  </div>
+                  <h2 className={`text-3xl font-black uppercase italic tracking-tighter mb-2 ${tema.text}`}>{promoPublicada.titulo}</h2>
+                  <p className={`text-xs opacity-60 font-medium mb-6 leading-relaxed ${tema.text}`}>{promoPublicada.mensaje}</p>
                   <div className="flex justify-between items-center">
-                    <span className={`text-2xl font-black ${tema.text}`}>${Number(promoPublicada.precio).toLocaleString()}</span>
+                    <span className={`text-3xl font-black ${tema.primary}`}>${Number(promoPublicada.precio).toLocaleString()}</span>
                     <Button 
-                      onClick={() => setCarrito([...carrito, { id: 'promo', nombre: promoPublicada.titulo, precio: Number(promoPublicada.precio), cant: 1 }])}
-                      className={`rounded-xl font-black uppercase italic ${tema.accent}`}
+                      onClick={() => {
+                        setCarrito([...carrito, { id: 'promo', nombre: promoPublicada.titulo, precio: Number(promoPublicada.precio), cant: 1 }]);
+                        toast.success("¡Promoción agregada!");
+                      }}
+                      className={`rounded-2xl h-14 px-8 font-black uppercase italic shadow-xl ${tema.accent}`}
                     >
                       AGREGAR PROMO
                     </Button>
@@ -205,108 +245,109 @@ export default function Menu({ productos, tema }: { productos: any[], tema: any 
           )}
 
           {/* GRILLA DE PRODUCTOS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {productos.filter(p => catSeleccionada === "Todas" || p.categoria === catSeleccionada).map(p => (
-              <Card key={p.id} className={`rounded-[2rem] overflow-hidden border ${tema.border} shadow-sm ${tema.bgHeader} transition-all ${p.disponible === false ? 'opacity-60 grayscale-[0.5]' : ''}`}>
-                <div className="h-40 overflow-hidden relative">
-                  <img src={p.imagen} className="w-full h-full object-cover" alt={p.nombre} />
+              <Card key={p.id} className={`rounded-[2.5rem] overflow-hidden border-none shadow-sm ${tema.bgHeader} hover:shadow-xl transition-all group ${p.disponible === false ? 'opacity-50' : ''}`}>
+                <div className="h-44 overflow-hidden relative">
+                  <img src={p.imagen} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={p.nombre} />
                   {p.disponible === false && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                      <span className="bg-red-600 text-white px-4 py-1 rounded-full font-black italic text-[10px] uppercase tracking-tighter">Agotado</span>
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[2px]">
+                      <span className="bg-red-600 text-white px-6 py-2 rounded-full font-black italic text-xs uppercase tracking-widest shadow-2xl">Agotado</span>
                     </div>
                   )}
                 </div>
-                <CardContent className="p-5 flex justify-between items-center">
-                  <div>
-                    <h3 className={`uppercase font-black text-xs italic ${tema.text} ${p.disponible === false ? 'line-through opacity-50' : ''}`}>{p.nombre}</h3>
-                    <span className={`text-lg font-black ${tema.primary} ${p.disponible === false ? 'opacity-50' : ''}`}>${p.precio.toLocaleString()}</span>
-                  </div>
-                  <Button 
-                    onClick={() => setCarrito([...carrito, {...p, cant: 1}])} 
-                    disabled={p.disponible === false}
-                    className={`rounded-xl h-10 w-10 p-0 shadow-lg ${p.disponible === false ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : tema.accent}`}
-                  >
-                    {p.disponible === false ? <X size={18}/> : <Plus size={18}/>}
-                  </Button>
+                <CardContent className="p-6">
+                   <p className="text-[9px] font-black uppercase italic opacity-30 mb-1">{p.categoria}</p>
+                   <h3 className={`uppercase font-black text-sm italic mb-4 ${tema.text}`}>{p.nombre}</h3>
+                   <div className="flex justify-between items-center">
+                      <span className={`text-xl font-black ${tema.primary}`}>${p.precio.toLocaleString()}</span>
+                      <Button 
+                        onClick={() => {
+                          setCarrito([...carrito, {...p, cant: 1}]);
+                          toast.success(`${p.nombre} al carrito`);
+                        }} 
+                        disabled={p.disponible === false}
+                        className={`rounded-2xl h-12 w-12 p-0 shadow-lg ${p.disponible === false ? 'bg-slate-200 text-slate-400' : tema.accent}`}
+                      >
+                        {p.disponible === false ? <X size={20}/> : <Plus size={24}/>}
+                      </Button>
+                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         </div>
 
-        {/* CARRITO (DERECHA) */}
+        {/* CARRITO (LADO DERECHO) */}
         <div className="lg:col-span-1">
-          <Card className={`rounded-[2.5rem] shadow-2xl border-none sticky top-24 overflow-hidden border-t-4 ${tema.bgHeader} ${tema.border.replace('border-', 'border-t-')}`}>
-            <div className={`${tema.accent} p-6 text-center`}>
-                <h3 className="opacity-50 font-black uppercase italic text-[9px]">Total Pedido</h3>
-                <div className="text-3xl font-black">${total.toLocaleString('es-AR')}</div>
+          <Card className={`rounded-[3rem] shadow-2xl border-none sticky top-10 overflow-hidden border-t-8 ${tema.bgHeader} ${tema.border.replace('border-', 'border-t-')}`}>
+            <div className={`${tema.accent} p-8 text-center`}>
+                <h3 className="opacity-50 font-black uppercase italic text-[10px] mb-1">Total a Pagar</h3>
+                <div className="text-4xl font-black italic tracking-tighter">${total.toLocaleString('es-AR')}</div>
             </div>
             
-            <CardContent className="p-5 space-y-6">
-              <div className="space-y-3">
-                <p className={`text-[9px] font-black opacity-40 uppercase text-center italic ${tema.text}`}>Items Seleccionados</p>
-                <ScrollArea className="h-[200px] pr-2">
-                  {carrito.length === 0 ? (
-                    <p className={`text-center opacity-20 py-10 italic text-[10px] font-black uppercase ${tema.text}`}>Carrito vacío</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {carrito.map((item, idx) => (
-                        <div key={idx} className={`flex justify-between items-center p-3 rounded-2xl border ${tema.border} bg-black/5`}>
-                          <div className="flex flex-col">
-                            <span className={`text-[10px] font-black uppercase italic leading-tight ${tema.text}`}>{item.nombre}</span>
-                            <span className={`text-[10px] font-bold ${tema.primary}`}>${item.precio.toLocaleString()}</span>
-                          </div>
-                          <button onClick={() => eliminarDelCarrito(idx)} className="h-7 w-7 rounded-lg bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
-                            <X size={14} />
-                          </button>
+            <CardContent className="p-6 space-y-6">
+              <ScrollArea className="h-[250px] pr-2">
+                {carrito.length === 0 ? (
+                  <div className="text-center py-10 space-y-2 opacity-20">
+                    <Utensils className="mx-auto" size={40} />
+                    <p className="text-[10px] font-black uppercase italic">Tu pedido está vacío</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {carrito.map((item, idx) => (
+                      <div key={idx} className={`flex justify-between items-center p-4 rounded-3xl border ${tema.border} bg-black/5 animate-in slide-in-from-right-4`}>
+                        <div className="flex flex-col">
+                          <span className={`text-[10px] font-black uppercase italic leading-tight ${tema.text}`}>{item.nombre}</span>
+                          <span className={`text-[10px] font-bold ${tema.primary}`}>${item.precio.toLocaleString()}</span>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </div>
+                        <button onClick={() => eliminarDelCarrito(idx)} className="h-8 w-8 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
 
               <hr className={`opacity-10 ${tema.text}`} />
 
-              {entrega !== 'mesa' ? (
+              {entrega !== 'mesa' && (
                 <div className="space-y-4">
-                  <p className={`text-[9px] font-black opacity-40 uppercase text-center italic ${tema.text}`}>Método de Pago</p>
+                  <p className={`text-[10px] font-black opacity-30 uppercase text-center italic ${tema.text}`}>Forma de Pago</p>
                   <div className="grid grid-cols-3 gap-2">
-                    <button onClick={() => setMetodoPago('efectivo')} className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all ${metodoPago === 'efectivo' ? 'border-green-500 bg-green-500/10 shadow-md scale-105' : `border-transparent opacity-40`}`}>
-                      <Banknote size={16} className="text-green-600" /><span className={`text-[7px] font-black uppercase italic ${tema.text}`}>Efectivo</span>
+                    <button onClick={() => setMetodoPago('efectivo')} className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all ${metodoPago === 'efectivo' ? 'border-green-500 bg-green-500/10 scale-105' : `border-transparent opacity-40`}`}>
+                      <Banknote size={18} className="text-green-600 mb-1" /><span className={`text-[7px] font-black uppercase italic ${tema.text}`}>Efectivo</span>
                     </button>
-                    <button onClick={() => setMetodoPago('transferencia')} className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all ${metodoPago === 'transferencia' ? 'border-blue-500 bg-blue-500/10 shadow-md scale-105' : `border-transparent opacity-40`}`}>
-                      <Wallet size={16} className="text-blue-600" /><span className={`text-[7px] font-black uppercase italic ${tema.text}`}>Transf.</span>
+                    <button onClick={() => setMetodoPago('transferencia')} className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all ${metodoPago === 'transferencia' ? 'border-blue-500 bg-blue-500/10 scale-105' : `border-transparent opacity-40`}`}>
+                      <Wallet size={18} className="text-blue-600 mb-1" /><span className={`text-[7px] font-black uppercase italic ${tema.text}`}>Transf.</span>
                     </button>
-                    <button onClick={() => setMetodoPago('mercadopago')} className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all ${metodoPago === 'mercadopago' ? 'border-sky-400 bg-sky-400/10 shadow-md scale-105' : `border-transparent opacity-40`}`}>
-                      <CreditCard size={16} className="text-sky-500" /><span className={`text-[7px] font-black uppercase italic ${tema.text}`}>M. Pago</span>
+                    <button onClick={() => setMetodoPago('mercadopago')} className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all ${metodoPago === 'mercadopago' ? 'border-sky-400 bg-sky-400/10 scale-105' : `border-transparent opacity-40`}`}>
+                      <CreditCard size={18} className="text-sky-500 mb-1" /><span className={`text-[7px] font-black uppercase italic ${tema.text}`}>M. Pago</span>
                     </button>
                   </div>
+                  
                   {metodoPago === 'transferencia' && (
                     <div className={`p-4 rounded-2xl border bg-blue-500/5 ${tema.border} space-y-2`}>
                       <div className="flex justify-between items-center">
                         <span className={`text-[8px] font-black uppercase italic ${tema.text}`}>Alias: {DATOS_PAGO.alias}</span>
-                        <Button onClick={copiarAlias} size="sm" className="bg-blue-600 h-8 w-8 p-0">
+                        <Button onClick={copiarAlias} size="sm" className="bg-blue-600 h-8 w-8 p-0 rounded-lg">
                           {copiado ? <Check size={14}/> : <Copy size={14}/>}
                         </Button>
                       </div>
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className={`py-6 text-center border-2 border-dashed rounded-[2rem] bg-black/5 ${tema.border}`}>
-                  <p className={`text-[10px] font-black opacity-40 uppercase italic ${tema.text}`}>Pago presencial en mesa</p>
-                </div>
               )}
 
               <Button 
                 onClick={enviarPedido} 
-                disabled={loadingMP}
-                className={`w-full h-14 rounded-2xl font-black text-xs uppercase italic shadow-xl transition-all ${metodoPago === 'mercadopago' && entrega !== 'mesa' ? 'bg-[#009EE3] hover:bg-[#007EB5] text-white' : tema.accent}`}
+                disabled={loadingMP || carrito.length === 0}
+                className={`w-full h-16 rounded-[1.5rem] font-black text-xs uppercase italic shadow-2xl transition-all ${metodoPago === 'mercadopago' && entrega !== 'mesa' ? 'bg-[#009EE3] hover:bg-[#007EB5] text-white' : tema.accent}`}
               >
-                {loadingMP && metodoPago === 'mercadopago' ? <Loader2 className="animate-spin" /> : 
-                 entrega === 'mesa' ? 'ENVIAR PEDIDO A COCINA' : 
-                 metodoPago === 'mercadopago' ? 'PAGAR CON MERCADO PAGO' : 'ENVIAR PEDIDO'}
+                {loadingMP ? <Loader2 className="animate-spin" /> : 
+                 entrega === 'mesa' ? 'PEDIR A COCINA' : 
+                 metodoPago === 'mercadopago' ? 'PAGAR AHORA' : 'CONFIRMAR PEDIDO'}
               </Button>
             </CardContent>
           </Card>
