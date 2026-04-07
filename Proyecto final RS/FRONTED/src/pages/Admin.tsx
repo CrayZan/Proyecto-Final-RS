@@ -6,7 +6,7 @@ import {
   Plus, Trash2, UploadCloud, Edit3, Save, Megaphone, 
   DollarSign, CalendarDays, Users, Settings, Palette, 
   LogOut, LayoutDashboard, ExternalLink, ChevronRight, Check, Utensils, QrCode, Store
-} from "lucide-center"
+} from "lucide-react"
 import { ref, push, remove, update, onValue, set } from "firebase/database"
 import { db } from "../lib/firebase"
 import { toast } from "sonner"
@@ -237,21 +237,18 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
                       )}
                     </div>
                     <div className="flex gap-2 pr-4">
-                      {/* BOTÓN DISPONIBILIDAD */}
                       <button 
                         onClick={() => update(ref(db, `productos/${p.id}`), { disponible: p.disponible === false })} 
                         className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${p.disponible === false ? 'bg-orange-500 text-white shadow-lg' : 'bg-black/5 text-slate-400 hover:bg-black/10'}`}
                       >
-                        {p.disponible === false ? <Plus size={18} /> : <Plus className="rotate-45" size={18} />}
+                        {p.disponible === false ? <Check size={18} /> : <Utensils size={18} />}
                       </button>
-                      {/* BOTÓN EDITAR */}
                       <button 
                         onClick={() => { setEditandoId(p.id); setEditForm({ precio: p.precio.toString(), descripcion: p.descripcion || "" }); }} 
                         className="w-12 h-12 rounded-2xl bg-black/5 text-slate-400 hover:text-blue-500 flex items-center justify-center transition-all"
                       >
                         <Edit3 size={18}/>
                       </button>
-                      {/* BOTÓN BORRAR */}
                       <button 
                         onClick={() => confirm("¿Borrar?") && remove(ref(db, `productos/${p.id}`))} 
                         className="w-12 h-12 rounded-2xl bg-black/5 text-slate-400 hover:text-red-500 flex items-center justify-center transition-all"
