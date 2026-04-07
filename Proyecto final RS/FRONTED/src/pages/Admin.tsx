@@ -18,7 +18,6 @@ const CATEGORIAS_MENU = [
   "Postres", "Cerveza", "Vinos", "Gaseosas"
 ];
 
-// Recibimos 'tema' como prop para que el admin también se vea profesional
 export default function Admin({ productos, tema }: { productos: any[], tema: any }) {
   const [tab, setTab] = useState<'menu' | 'reservas' | 'config'>('menu')
   const [nuevo, setNuevo] = useState({ nombre: "", precio: "", categoria: "Principales", imagen: "", descripcion: "" })
@@ -46,6 +45,16 @@ export default function Admin({ productos, tema }: { productos: any[], tema: any
       }
     });
   }, [])
+
+  const toggleDisponibilidad = async (id: string, estadoActual: boolean) => {
+    try {
+      const nuevoEstado = estadoActual === false ? true : false;
+      await update(ref(db, `productos/${id}`), { disponible: nuevoEstado });
+      toast.success(nuevoEstado ? "Producto disponible" : "Producto agotado");
+    } catch (e) {
+      toast.error("Error al actualizar stock");
+    }
+  }
 
   const cambiarTema = async (nuevoTema: string) => {
     try {
@@ -79,7 +88,7 @@ export default function Admin({ productos, tema }: { productos: any[], tema: any
   const agregar = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!nuevo.nombre || !nuevo.precio || !nuevo.imagen) return toast.error("Completá nombre, precio y foto");
-    await push(ref(db, 'productos'), { ...nuevo, precio: Number(nuevo.precio) });
+    await push(ref(db, 'productos'), { ...nuevo, precio: Number(nuevo.precio), disponible: true });
     setNuevo({ nombre: "", precio: "", categoria: "Principales", imagen: "", descripcion: "" });
     toast.success("¡Plato publicado!");
   }
@@ -104,10 +113,10 @@ export default function Admin({ productos, tema }: { productos: any[], tema: any
             <LayoutDashboard size={12} />
             <span>Panel</span>
             <ChevronRight size={12} />
-            <span className={tema.primary.replace('text-', 'text-')}>{tab === 'menu' ? 'Menú' : tab === 'reservas' ? 'Reservas' : 'Ajustes'}</span>
+            <span className={tema.primary}>{tab === 'menu' ? 'Menú' : tab === 'reservas' ? 'Reservas' : 'Ajustes'}</span>
           </div>
           <h1 className={`text-3xl font-black uppercase italic tracking-tighter ${tema.text}`}>
-            Gestión <span className={tema.primary.replace('text-', 'text-')}>RestoWeb</span>
+            Gestión <span className={tema.primary}>RestoWeb</span>
           </h1>
         </div>
 
@@ -141,11 +150,9 @@ export default function Admin({ productos, tema }: { productos: any[], tema: any
         </button>
       </div>
 
-      {/* CONTENIDO: MENU */}
       {tab === 'menu' && (
         <div className="space-y-10 animate-in slide-in-from-left-4 duration-500">
-           
-           {/* SECCIÓN PROMO */}
+            
            <Card className={`rounded-[2.5rem] border-none shadow-2xl overflow-hidden border-b-8 ${tema.bgHeader} ${tema.border.replace('border-', 'border-b-')}`}>
             <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
               <div className="space-y-4">
@@ -175,7 +182,6 @@ export default function Admin({ productos, tema }: { productos: any[], tema: any
             </div>
           </Card>
           
-          {/* GESTIÓN PRODUCTOS */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
              <div className="xl:col-span-1">
                <Card className={`rounded-[3rem] border-none shadow-2xl sticky top-10 overflow-hidden border-t-8 ${tema.bgHeader} ${tema.border.replace('border-', 'border-t-')}`}>
@@ -183,26 +189,26 @@ export default function Admin({ productos, tema }: { productos: any[], tema: any
                    <Plus size={16}/> Nuevo Producto
                  </div>
                  <CardContent className="p-8 space-y-4">
-                     <label className="block h-48 border-2 border-dashed border-black/5 rounded-[2rem] overflow-hidden cursor-pointer bg-black/5 hover:bg-black/10 transition-all">
-                       {nuevo.imagen ? <img src={nuevo.imagen} className="w-full h-full object-cover" /> : <div className="flex flex-col items-center justify-center h-full opacity-20"><UploadCloud size={30} className="mb-2"/><span className="text-[10px] font-black uppercase">Foto del plato</span></div>}
-                       <input type="file" className="hidden" onChange={(e) => handleFileChange(e, 'producto')} />
-                     </label>
-                     <Input className={`rounded-2xl h-14 font-bold bg-black/5 border-none ${tema.text}`} placeholder="Nombre del plato" value={nuevo.nombre} onChange={e => setNuevo({...nuevo, nombre: e.target.value})} />
-                     <div className="grid grid-cols-2 gap-4">
-                       <Input className="rounded-2xl h-14 font-bold bg-black/5 border-none" type="number" placeholder="Precio $" value={nuevo.precio} onChange={e => setNuevo({...nuevo, precio: e.target.value})} />
-                       <select className={`border-none rounded-2xl h-14 px-4 text-[10px] font-black uppercase bg-black/5 outline-none focus:ring-2 ${tema.text}`} value={nuevo.categoria} onChange={e => setNuevo({...nuevo, categoria: e.target.value})}>
-                         {CATEGORIAS_MENU.map(c => <option key={c} className="bg-slate-800 text-white">{c}</option>)}
-                       </select>
-                     </div>
-                     <textarea className="w-full bg-black/5 border-none rounded-2xl p-4 text-sm font-bold min-h-[100px] outline-none" placeholder="Descripción..." value={nuevo.descripcion} onChange={e => setNuevo({...nuevo, descripcion: e.target.value})} />
-                     <Button onClick={agregar} className={`w-full h-16 font-black uppercase italic rounded-2xl shadow-xl transition-all ${tema.accent}`}><Plus className="mr-2"/> Publicar Ahora</Button>
+                   <label className="block h-48 border-2 border-dashed border-black/5 rounded-[2rem] overflow-hidden cursor-pointer bg-black/5 hover:bg-black/10 transition-all">
+                     {nuevo.imagen ? <img src={nuevo.imagen} className="w-full h-full object-cover" /> : <div className="flex flex-col items-center justify-center h-full opacity-20"><UploadCloud size={30} className="mb-2"/><span className="text-[10px] font-black uppercase">Foto del plato</span></div>}
+                     <input type="file" className="hidden" onChange={(e) => handleFileChange(e, 'producto')} />
+                   </label>
+                   <Input className={`rounded-2xl h-14 font-bold bg-black/5 border-none ${tema.text}`} placeholder="Nombre del plato" value={nuevo.nombre} onChange={e => setNuevo({...nuevo, nombre: e.target.value})} />
+                   <div className="grid grid-cols-2 gap-4">
+                     <Input className="rounded-2xl h-14 font-bold bg-black/5 border-none" type="number" placeholder="Precio $" value={nuevo.precio} onChange={e => setNuevo({...nuevo, precio: e.target.value})} />
+                     <select className={`border-none rounded-2xl h-14 px-4 text-[10px] font-black uppercase bg-black/5 outline-none focus:ring-2 ${tema.text}`} value={nuevo.categoria} onChange={e => setNuevo({...nuevo, categoria: e.target.value})}>
+                       {CATEGORIAS_MENU.map(c => <option key={c} className="bg-slate-800 text-white">{c}</option>)}
+                     </select>
+                   </div>
+                   <textarea className="w-full bg-black/5 border-none rounded-2xl p-4 text-sm font-bold min-h-[100px] outline-none" placeholder="Descripción..." value={nuevo.descripcion} onChange={e => setNuevo({...nuevo, descripcion: e.target.value})} />
+                   <Button onClick={agregar} className={`w-full h-16 font-black uppercase italic rounded-2xl shadow-xl transition-all ${tema.accent}`}><Plus className="mr-2"/> Publicar Ahora</Button>
                  </CardContent>
                </Card>
              </div>
              
              <div className="xl:col-span-2 space-y-6">
                 {productos.map(p => (
-                  <div key={p.id} className={`${tema.bgHeader} p-4 rounded-[2.5rem] shadow-sm border ${tema.border} flex items-center gap-5 group hover:shadow-xl hover:translate-x-2 transition-all duration-300`}>
+                  <div key={p.id} className={`${tema.bgHeader} p-4 rounded-[2.5rem] shadow-sm border ${tema.border} flex items-center gap-5 group hover:shadow-xl hover:translate-x-2 transition-all duration-300 ${p.disponible === false ? 'opacity-40 grayscale' : ''}`}>
                     <img src={p.imagen} className="w-24 h-24 rounded-[1.5rem] object-cover shadow-lg" />
                     <div className="flex-1">
                       <p className="font-black uppercase italic text-[9px] opacity-40 mb-1">{p.categoria}</p>
@@ -217,6 +223,18 @@ export default function Admin({ productos, tema }: { productos: any[], tema: any
                       )}
                     </div>
                     <div className="flex gap-2 pr-4">
+                      {/* BOTÓN DE DISPONIBILIDAD DINÁMICO */}
+                      <Button 
+                        onClick={() => toggleDisponibilidad(p.id, p.disponible !== false)} 
+                        className={`w-12 h-12 rounded-2xl shadow-none transition-all border-none ${
+                          p.disponible !== false 
+                            ? `${tema.accent} hover:opacity-80` 
+                            : "bg-red-500 text-white animate-pulse"
+                        }`}
+                      >
+                        {p.disponible !== false ? <Check size={18} /> : <Trash2 size={18} className="rotate-45" />}
+                      </Button>
+
                       <Button onClick={() => { setEditandoId(p.id); setEditForm({precio: p.precio.toString(), descripcion: p.descripcion}) }} className="w-12 h-12 rounded-2xl bg-black/5 text-slate-400 hover:text-blue-500 shadow-none"><Edit3 size={18}/></Button>
                       <Button onClick={() => confirm("¿Borrar?") && remove(ref(db, `productos/${p.id}`))} className="w-12 h-12 rounded-2xl bg-black/5 text-slate-400 hover:text-red-500 shadow-none"><Trash2 size={18}/></Button>
                     </div>
@@ -227,7 +245,7 @@ export default function Admin({ productos, tema }: { productos: any[], tema: any
         </div>
       )}
 
-      {/* CONTENIDO: RESERVAS */}
+      {/* RESTO DE TABS (RESERVAS Y CONFIG SIN CAMBIOS ADICIONALES) */}
       {tab === 'reservas' && (
         <div className="animate-in slide-in-from-bottom-4 duration-500">
            {reservas.length === 0 ? (
@@ -272,7 +290,6 @@ export default function Admin({ productos, tema }: { productos: any[], tema: any
         </div>
       )}
 
-      {/* CONTENIDO: AJUSTES */}
       {tab === 'config' && (
         <div className="animate-in slide-in-from-right-4 duration-500 max-w-5xl mx-auto">
           <div className="text-center mb-12">
