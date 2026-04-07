@@ -1,31 +1,46 @@
+import { useState, useEffect } from "react"
+import { Routes, Route, Link, Navigate } from "react-router-dom"
+import { Toaster } from "sonner"
+import { UtensilsCrossed, BadgeCheck, CalendarDays, Lock, QrCode, Sparkles } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { ref, onValue } from "firebase/database"
+import { db } from "./lib/firebase"
+
+import Home from "./pages/Home"
+import Menu from "./pages/Menu"
+import Admin from "./pages/Admin"
+import Comandas from "./pages/Comandas"
+import GeneradorQR from "./pages/GeneradorQR"
+import Login from "./pages/Login"
+
 // DEFINICIÓN DE LOS TEMAS ELEGANTES (REVISADOS PARA DESCANSO VISUAL)
 const TEMAS = {
   naranja: {
     name: "Crema Coffee",
-    primary: "text-[#8B5E3C]", // Marrón café suave
-    bgPage: "bg-[#FDFBF7]",    // Hueso/Crema (Relaja la vista)
+    primary: "text-[#8B5E3C]",
+    bgPage: "bg-[#FDFBF7]",
     bgHeader: "bg-[#FDFBF7]/80",
     bgIcon: "bg-[#8B5E3C]",
     border: "border-[#E8E2D9]",
     badge: "bg-[#E8E2D9] text-[#5D4037]",
-    text: "text-[#4A3F35]",    // Gris café oscuro (No negro)
-    accent: "bg-[#8B5E3C] text-[#FDFBF7]" // Botón resalta pero texto es crema
+    text: "text-[#4A3F35]",
+    accent: "bg-[#8B5E3C] text-[#FDFBF7]"
   },
   oscuro: {
     name: "Midnight Luxury",
-    primary: "text-[#D4AF37]", // Dorado mate
-    bgPage: "bg-[#1A1A1C]",    // Gris obsidiana (No negro puro)
+    primary: "text-[#D4AF37]",
+    bgPage: "bg-[#1A1A1C]",
     bgHeader: "bg-[#242426]/80",
     bgIcon: "bg-[#D4AF37]",
     border: "border-[#323235]",
     badge: "bg-[#2D2D30] text-[#D4AF37]",
-    text: "text-[#C2C2C2]",    // Gris seda (Evita el brillo excesivo)
-    accent: "bg-[#D4AF37] text-[#1A1A1C]" // Botón dorado, texto oscuro
+    text: "text-[#C2C2C2]",
+    accent: "bg-[#D4AF37] text-[#1A1A1C]"
   },
   verde: {
     name: "Forest Minimal",
-    primary: "text-[#4E6E5D]", // Verde musgo desaturado
-    bgPage: "bg-[#F2F5F3]",    // Gris verdoso muy claro
+    primary: "text-[#4E6E5D]",
+    bgPage: "bg-[#F2F5F3]",
     bgHeader: "bg-[#F2F5F3]/80",
     bgIcon: "bg-[#4E6E5D]",
     border: "border-[#D1D9D4]",
@@ -40,17 +55,52 @@ export default function App() {
   const [pedidos, setPedidos] = useState<any[]>([])
   const [reservas, setReservas] = useState<any[]>([])
   const [isAuth, setIsAuth] = useState(false)
+  
+  // Inicializamos con el tema por defecto para evitar pantallas blancas
   const [temaActual, setTemaActual] = useState(TEMAS.naranja)
 
+  // 1. Escuchar el cambio de tema con validación de seguridad
   useEffect(() => {
-    onValue(ref(db, 'config/tema'), (snapshot) => {
-      const temaKey = snapshot.val() || 'naranja';
-      // @ts-ignore
-      setTemaActual(TEMAS[temaKey] || TEMAS.naranja);
+    const temaRef = ref(db, 'config/tema');
+    const unsubscribe = onValue(temaRef, (snapshot) => {
+      const temaKey = snapshot.val();
+      if (temaKey && TEMAS[temaKey as keyof typeof TEMAS]) {
+        setTemaActual(TEMAS[temaKey as keyof typeof TEMAS]);
+      } else {
+        setTemaActual(TEMAS.naranja);
+      }
     });
+    return () => unsubscribe();
   }, []);
 
-  // ... (tus otros useEffects se mantienen igual)
+  // 2. Carga de Productos
+  useEffect(() => {
+    const prodRef = ref(db, 'productos');
+    return onValue(prodRef, (snapshot) => {
+      const data = snapshot.val()
+      if (data) setProductos(Object.keys(data).map(key => ({ id: key, ...data[key] })))
+    })
+  }, [])
+
+  // 3. Carga de Pedidos
+  useEffect(() => {
+    const pedRef = ref(db, 'pedidos');
+    return onValue(pedRef, (snapshot) => {
+      const data = snapshot.val()
+      if (data) setPedidos(Object.keys(data).map(key => ({ id: key, ...data[key] })).reverse())
+      else setPedidos([])
+    })
+  }, [])
+
+  // 4. Carga de Reservas
+  useEffect(() => {
+    const resRef = ref(db, 'reservas');
+    return onValue(resRef, (snapshot) => {
+      const data = snapshot.val()
+      if (data) setReservas(Object.keys(data).map(key => ({ id: key, ...data[key] })))
+      else setReservas([])
+    })
+  }, [])
 
   return (
     <div className={`min-h-screen flex flex-col font-sans relative transition-colors duration-500 ${temaActual.bgPage} ${temaActual.text}`}>
@@ -100,22 +150,23 @@ export default function App() {
 
       <main className="flex-1">
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/menu" element={<Menu productos={productos} />} />
-          <Route path="/login" element={<Login onLogin={() => setIsAuth(true)} />} />
-          <Route path="/admin" element={isAuth ? <Admin productos={productos} /> : <Navigate to="/login" />} />
-          <Route path="/admin/qrs" element={isAuth ? <GeneradorQR /> : <Navigate to="/login" />} />
-          <Route path="/comandas" element={isAuth ? <Comandas pedidos={pedidos} /> : <Navigate to="/login" />} />
+          <Route path="/" element={<Home tema={temaActual} />} />
+          <Route path="/menu" element={<Menu productos={productos} tema={temaActual} />} />
+          <Route path="/login" element={<Login onLogin={() => setIsAuth(true)} tema={temaActual} />} />
+          
+          <Route path="/admin" element={isAuth ? <Admin productos={productos} tema={temaActual} /> : <Navigate to="/login" />} />
+          <Route path="/admin/qrs" element={isAuth ? <GeneradorQR tema={temaActual} /> : <Navigate to="/login" />} />
+          <Route path="/comandas" element={isAuth ? <Comandas pedidos={pedidos} tema={temaActual} /> : <Navigate to="/login" />} />
+          
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
 
-      {/* FOOTER */}
       <footer className="p-8 mt-auto">
         {!isAuth && (
           <Link 
             to="/login" 
-            className={`fixed bottom-8 left-8 z-40 p-4 rounded-[2rem] shadow-2xl transition-all flex items-center gap-3 group border ${temaActual.border} ${temaActual.bgHeader} ${temaActual.primary}`}
+            className={`fixed bottom-8 left-8 z-40 p-4 rounded-[2rem] shadow-2xl transition-all flex items-center gap-3 group border ${temaActual.border} ${temaActual.bgHeader} ${temaActual.primary} hover:scale-105`}
           >
             <Lock size={18} className="group-hover:rotate-12 transition-transform" />
             <span className="text-[10px] font-black uppercase italic tracking-[0.2em] hidden md:inline">Panel Propietario</span>
