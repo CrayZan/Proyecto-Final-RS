@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { 
   Plus, Trash2, UploadCloud, Edit3, Save, Megaphone, 
   DollarSign, CalendarDays, Settings, Palette, 
-  LogOut, LayoutDashboard, ExternalLink, ChevronRight, Check, Utensils, QrCode, Store, Clock, Power, BellRing, Volume2
+  LogOut, LayoutDashboard, ExternalLink, ChevronRight, Check, Utensils, QrCode, Store, Clock, Power, BellRing, Volume2, CreditCard
 } from "lucide-react"
 import { ref, push, remove, update, onValue, set, onChildAdded, query, limitToLast } from "firebase/database"
 import { db } from "../lib/firebase"
@@ -34,6 +34,9 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const initialized = useRef(false)
 
+  // ESTADO PARA DATOS DE PAGO
+  const [datosPago, setDatosPago] = useState({ cbu: "", alias: "", titular: "" })
+
   const [estadoLocal, setEstadoLocal] = useState({
     manualAbierto: true,
     horarios: DIAS_SEMANA.reduce((acc, dia) => ({ ...acc, [dia]: { inicio: "20:00", fin: "00:00" } }), {})
@@ -51,6 +54,7 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
     onValue(ref(db, 'config/promo'), (snapshot) => { if (snapshot.exists()) setPromo(snapshot.val()); });
     onValue(ref(db, 'config/tema'), (snapshot) => { if (snapshot.exists()) setTemaActivo(snapshot.val()); });
     onValue(ref(db, 'config/estado'), (snapshot) => { if (snapshot.exists()) setEstadoLocal(snapshot.val()); });
+    onValue(ref(db, 'config/pagos'), (snapshot) => { if (snapshot.exists()) setDatosPago(snapshot.val()); });
     onValue(ref(db, 'reservas'), (snapshot) => {
       const data = snapshot.val();
       setReservas(data ? Object.keys(data).map(key => ({ id: key, ...data[key] })).reverse() : []);
@@ -70,12 +74,10 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
         setUltimoPedido(nuevoPedido);
         setShowPedidoModal(true);
         
-        // REPRODUCCIÓN DE AUDIO
         audioRef.current?.play().catch(() => {
           console.log("Audio bloqueado por el navegador");
         });
 
-        // NOTIFICACIÓN FLOTANTE (TOAST) PERSISTENTE
         toast.custom((t) => (
           <div className={`${tema.bgHeader} border-2 ${tema.border} p-4 rounded-2xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-right-full`}>
             <div className={`${tema.accent} p-3 rounded-full animate-bounce text-white`}>
@@ -97,7 +99,7 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
     });
 
     return () => { unsubscribe(); audioRef.current?.pause(); };
-  }, [tema]) // Agregamos tema como dependencia para que el toast use los colores correctos
+  }, [tema])
 
   const cerrarAlerta = () => {
     setShowPedidoModal(false);
@@ -107,6 +109,7 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
   }
 
   // Funciones de Guardado
+  const guardarPagos = async () => { try { await set(ref(db, 'config/pagos'), datosPago); toast.success("Datos de pago guardados"); } catch (e) { toast.error("Error"); } }
   const guardarPerfil = async () => { try { await set(ref(db, 'config/perfil'), perfilEdit); toast.success("Perfil actualizado"); } catch (e) { toast.error("Error"); } }
   const guardarEstadoLocal = async (nuevoEstado: any) => { try { await set(ref(db, 'config/estado'), nuevoEstado); toast.success("Horarios actualizados"); } catch (e) { toast.error("Error"); } }
   const cambiarTema = async (nuevoTema: string) => { try { await set(ref(db, 'config/tema'), nuevoTema); setTemaActivo(nuevoTema); toast.success(`Estilo ${nuevoTema} aplicado`); } catch (e) { toast.error("Error"); } }
@@ -270,6 +273,24 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
       {tab === 'config' && (
         <div className="animate-in slide-in-from-right-4 max-w-5xl mx-auto space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            {/* SECCIÓN DATOS DE TRANSFERENCIA */}
+            <Card className={`rounded-[3rem] border-none shadow-xl p-8 relative overflow-hidden md:col-span-2 ${tema.bgHeader}`}>
+              <div className="flex items-center gap-4 mb-6">
+                <div className={`${tema.accent} p-3 rounded-2xl text-white shadow-lg`}><CreditCard size={28} /></div>
+                <div>
+                  <h3 className={`text-xl font-black uppercase italic ${tema.text}`}>Datos de Transferencia</h3>
+                  <p className="text-[10px] font-bold opacity-40 uppercase tracking-tighter">Información para pagos bancarios</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className="space-y-1"><p className="text-[10px] font-black uppercase opacity-40 ml-2">Alias</p><Input className="bg-black/5 border-none font-bold h-12 rounded-xl" placeholder="Ej: mi.local.pago" value={datosPago.alias} onChange={e => setDatosPago({...datosPago, alias: e.target.value})} /></div>
+                <div className="space-y-1"><p className="text-[10px] font-black uppercase opacity-40 ml-2">CBU / CVU</p><Input className="bg-black/5 border-none font-bold h-12 rounded-xl" placeholder="22 dígitos" value={datosPago.cbu} onChange={e => setDatosPago({...datosPago, cbu: e.target.value})} /></div>
+                <div className="space-y-1"><p className="text-[10px] font-black uppercase opacity-40 ml-2">Titular</p><Input className="bg-black/5 border-none font-bold h-12 rounded-xl" placeholder="Nombre completo" value={datosPago.titular} onChange={e => setDatosPago({...datosPago, titular: e.target.value})} /></div>
+              </div>
+              <Button onClick={guardarPagos} className={`w-full h-12 rounded-xl font-black uppercase italic ${tema.accent}`}>Guardar Datos Bancarios</Button>
+            </Card>
+
             <Card className={`rounded-[3rem] border-none shadow-xl p-8 relative overflow-hidden md:col-span-2 ${tema.bgHeader}`}>
               <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-6 z-10">
                 <div className="flex items-center gap-4">
