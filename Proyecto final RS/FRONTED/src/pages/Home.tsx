@@ -8,7 +8,8 @@ import { db } from "../lib/firebase"
 import { ref, push } from "firebase/database"
 import { toast } from "sonner"
 
-export default function Home() {
+// Añadimos la prop 'tema' para recibir la configuración visual
+export default function Home({ tema }: { tema: any }) {
   const [showReserva, setShowReserva] = useState(false)
   const [reserva, setReserva] = useState({
     nombre: "",
@@ -26,7 +27,6 @@ export default function Home() {
     }
 
     try {
-      // Guardamos en la nueva colección 'reservas'
       await push(ref(db, 'reservas'), {
         ...reserva,
         estado: "confirmada",
@@ -45,27 +45,29 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 space-y-6">
-      <div className="text-center space-y-2 mb-4">
+    // Cambiamos 'bg-slate-50' por 'tema.bgPage' y añadimos 'tema.text'
+    <div className={`min-h-screen flex flex-col items-center justify-center p-6 space-y-6 transition-colors duration-500 ${tema.bgPage}`}>
+      
+      <div className="text-center space-y-2 mb-4 animate-in fade-in zoom-in duration-700">
         <div className="bg-orange-600 w-20 h-20 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl rotate-6 mb-4 border-4 border-white">
           <ChefHat className="text-white" size={40} />
         </div>
-        <h1 className="text-5xl font-black italic uppercase tracking-tighter text-slate-900 leading-none">
+        <h1 className={`text-5xl font-black italic uppercase tracking-tighter leading-none ${tema.text}`}>
           Resto<span className="text-orange-600">App</span>
         </h1>
-        <p className="text-slate-400 font-bold italic text-sm tracking-widest">BIENVENIDOS</p>
+        <p className={`opacity-40 font-bold italic text-sm tracking-widest ${tema.text}`}>BIENVENIDOS</p>
       </div>
 
       <div className="w-full max-w-sm space-y-4">
         <Link to="/menu" className="block">
-          <Button className="w-full h-24 bg-white hover:bg-slate-50 text-slate-900 rounded-[2.5rem] shadow-xl border-none text-xl font-black uppercase italic tracking-tighter transition-all active:scale-95 flex flex-col items-center justify-center gap-1">
+          {/* Usamos tema.bgHeader para que el botón de la carta destaque sutilmente del fondo */}
+          <Button className={`w-full h-24 rounded-[2.5rem] shadow-xl border-none text-xl font-black uppercase italic tracking-tighter transition-all active:scale-95 flex flex-col items-center justify-center gap-1 ${tema.bgHeader} ${tema.text} hover:opacity-90`}>
             <Utensils className="text-orange-600" size={24} />
             <span className="text-sm opacity-60">Explorar el</span>
             CARTA DIGITAL
           </Button>
         </Link>
 
-        {/* BOTÓN DE RESERVA EN CONTRASTE (Estilo Panel Admin) */}
         <Button 
           onClick={() => setShowReserva(true)}
           className="w-full h-24 bg-slate-900 hover:bg-orange-600 text-white rounded-[2.5rem] shadow-2xl border-none text-xl font-black uppercase italic tracking-tighter transition-all active:scale-95 flex flex-col items-center justify-center gap-1 group"
@@ -76,14 +78,14 @@ export default function Home() {
         </Button>
       </div>
 
-      <div className="mt-8 text-[10px] font-black uppercase italic text-slate-300 tracking-[0.3em]">
+      <div className={`mt-8 text-[10px] font-black uppercase italic opacity-30 tracking-[0.3em] ${tema.text}`}>
         San Vicente • Misiones
       </div>
 
-      {/* MODAL DE RESERVA */}
+      {/* MODAL DE RESERVA ADAPTADO */}
       {showReserva && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-300">
-          <Card className="w-full max-w-md rounded-[3rem] border-none shadow-2xl bg-white overflow-hidden overflow-y-auto max-h-[90vh]">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-300">
+          <Card className={`w-full max-w-md rounded-[3rem] border-none shadow-2xl overflow-hidden overflow-y-auto max-h-[90vh] ${tema.bgHeader}`}>
             <div className="bg-orange-600 p-8 flex justify-between items-center text-white">
               <div className="flex items-center gap-3">
                 <CalendarDays size={24} />
@@ -97,53 +99,53 @@ export default function Home() {
               <form onSubmit={hacerReserva} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase ml-2 text-slate-400 italic">Nombre</label>
+                    <label className={`text-[10px] font-black uppercase ml-2 opacity-50 italic ${tema.text}`}>Nombre</label>
                     <div className="relative">
-                      <User className="absolute left-3 top-3 text-slate-300" size={18} />
-                      <Input className="pl-10 rounded-2xl h-12 font-bold border-slate-100 bg-slate-50" placeholder="Juan" value={reserva.nombre} onChange={e => setReserva({...reserva, nombre: e.target.value})} />
+                      <User className="absolute left-3 top-3 text-slate-400" size={18} />
+                      <Input className={`pl-10 rounded-2xl h-12 font-bold border-none bg-black/5 ${tema.text}`} placeholder="Juan" value={reserva.nombre} onChange={e => setReserva({...reserva, nombre: e.target.value})} />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase ml-2 text-slate-400 italic">Apellido</label>
-                    <Input className="rounded-2xl h-12 font-bold border-slate-100 bg-slate-50" placeholder="Pérez" value={reserva.apellido} onChange={e => setReserva({...reserva, apellido: e.target.value})} />
+                    <label className={`text-[10px] font-black uppercase ml-2 opacity-50 italic ${tema.text}`}>Apellido</label>
+                    <Input className={`rounded-2xl h-12 font-bold border-none bg-black/5 ${tema.text}`} placeholder="Pérez" value={reserva.apellido} onChange={e => setReserva({...reserva, apellido: e.target.value})} />
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase ml-2 text-slate-400 italic">WhatsApp / Teléfono</label>
+                  <label className={`text-[10px] font-black uppercase ml-2 opacity-50 italic ${tema.text}`}>WhatsApp / Teléfono</label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-3 text-slate-300" size={18} />
-                    <Input className="pl-10 rounded-2xl h-12 font-bold border-slate-100 bg-slate-50" placeholder="3755 000000" type="tel" value={reserva.telefono} onChange={e => setReserva({...reserva, telefono: e.target.value})} />
+                    <Phone className="absolute left-3 top-3 text-slate-400" size={18} />
+                    <Input className={`pl-10 rounded-2xl h-12 font-bold border-none bg-black/5 ${tema.text}`} placeholder="3755 000000" type="tel" value={reserva.telefono} onChange={e => setReserva({...reserva, telefono: e.target.value})} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase ml-2 text-slate-400 italic">Fecha</label>
+                    <label className={`text-[10px] font-black uppercase ml-2 opacity-50 italic ${tema.text}`}>Fecha</label>
                     <div className="relative">
-                      <CalendarDays className="absolute left-3 top-3 text-slate-300" size={18} />
-                      <Input className="pl-10 rounded-2xl h-12 font-bold border-slate-100 bg-slate-50 cursor-pointer" type="date" value={reserva.fecha} onChange={e => setReserva({...reserva, fecha: e.target.value})} />
+                      <CalendarDays className="absolute left-3 top-3 text-slate-400" size={18} />
+                      <Input className={`pl-10 rounded-2xl h-12 font-bold border-none bg-black/5 cursor-pointer ${tema.text}`} type="date" value={reserva.fecha} onChange={e => setReserva({...reserva, fecha: e.target.value})} />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase ml-2 text-slate-400 italic">Hora</label>
+                    <label className={`text-[10px] font-black uppercase ml-2 opacity-50 italic ${tema.text}`}>Hora</label>
                     <div className="relative">
-                      <Clock className="absolute left-3 top-3 text-slate-300" size={18} />
-                      <Input className="pl-10 rounded-2xl h-12 font-bold border-slate-100 bg-slate-50 cursor-pointer" type="time" value={reserva.hora} onChange={e => setReserva({...reserva, hora: e.target.value})} />
+                      <Clock className="absolute left-3 top-3 text-slate-400" size={18} />
+                      <Input className={`pl-10 rounded-2xl h-12 font-bold border-none bg-black/5 cursor-pointer ${tema.text}`} type="time" value={reserva.hora} onChange={e => setReserva({...reserva, hora: e.target.value})} />
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-1 pb-4">
-                  <label className="text-[10px] font-black uppercase ml-2 text-slate-400 italic">Comensales</label>
+                  <label className={`text-[10px] font-black uppercase ml-2 opacity-50 italic ${tema.text}`}>Comensales</label>
                   <div className="relative">
-                    <Users className="absolute left-3 top-3 text-slate-300" size={18} />
+                    <Users className="absolute left-3 top-3 text-slate-400" size={18} />
                     <select 
-                      className="w-full pl-10 border-slate-100 rounded-2xl h-12 font-black uppercase italic bg-slate-50 text-[11px] appearance-none"
+                      className={`w-full pl-10 rounded-2xl h-12 font-black uppercase italic bg-black/5 text-[11px] appearance-none border-none ${tema.text}`}
                       value={reserva.comensales}
                       onChange={e => setReserva({...reserva, comensales: e.target.value})}
                     >
-                      {[1,2,3,4,5,6,7,8,9,10,12,15].map(n => <option key={n} value={n}>{n} Personas</option>)}
+                      {[1,2,3,4,5,6,7,8,9,10,12,15].map(n => <option key={n} value={n} className="text-black">{n} Personas</option>)}
                     </select>
                   </div>
                 </div>
