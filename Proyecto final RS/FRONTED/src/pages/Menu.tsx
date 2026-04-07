@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { 
   Utensils, Plus, Truck, Store, Wallet, 
-  CreditCard, Banknote, Navigation, Loader2, X, Clock 
+  CreditCard, Banknote, Navigation, Loader2, X, Clock, Copy, Check 
 } from "lucide-react"
 import { toast } from "sonner"
 import { ref, push, onValue, get } from "firebase/database" // Agregado 'get' para validación final
@@ -36,6 +36,12 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
   const [estaAbiertoAhora, setEstaAbiertoAhora] = useState(true)
 
   const categoriasUnicas = ["Todas", ...new Set(productos.map(p => p.categoria))];
+
+  // --- FUNCIÓN PARA COPIAR DATOS ---
+  const copiarDato = (texto: string, label: string) => {
+    navigator.clipboard.writeText(texto)
+    toast.success(`${label} copiado`)
+  }
 
   // --- ESCUCHA DE CONFIGURACIÓN (ESTADO Y PROMOS) ---
   useEffect(() => {
@@ -387,6 +393,40 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
                       <CreditCard size={18} className="text-sky-500 mb-1" /><span className={`text-[7px] font-black uppercase italic ${tema.text}`}>M. Pago</span>
                     </button>
                   </div>
+
+                  {/* DATOS DE TRANSFERENCIA (SOLO SI SE ELIGE ESTA OPCIÓN) */}
+                  {metodoPago === 'transferencia' && carrito.length > 0 && (
+                    <div className="bg-blue-500/5 border border-blue-500/20 rounded-3xl p-4 space-y-3 animate-in fade-in zoom-in duration-300">
+                      <p className="text-[9px] font-black uppercase italic text-blue-600 text-center">Datos Bancarios</p>
+                      
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center bg-white/50 p-2 rounded-xl">
+                          <div className="flex flex-col">
+                            <span className="text-[7px] uppercase font-bold opacity-40">Alias</span>
+                            <span className="text-[9px] font-black uppercase italic leading-none">{DATOS_PAGO.alias}</span>
+                          </div>
+                          <button onClick={() => copiarDato(DATOS_PAGO.alias, "Alias")} className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors text-blue-600">
+                            <Copy size={12} />
+                          </button>
+                        </div>
+
+                        <div className="flex justify-between items-center bg-white/50 p-2 rounded-xl">
+                          <div className="flex flex-col">
+                            <span className="text-[7px] uppercase font-bold opacity-40">CBU</span>
+                            <span className="text-[9px] font-black uppercase italic leading-none">{DATOS_PAGO.cbu}</span>
+                          </div>
+                          <button onClick={() => copiarDato(DATOS_PAGO.cbu, "CBU")} className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors text-blue-600">
+                            <Copy size={12} />
+                          </button>
+                        </div>
+
+                        <div className="text-center pt-1 border-t border-blue-500/10">
+                           <span className="text-[7px] uppercase font-bold opacity-40 block">Titular</span>
+                           <span className="text-[9px] font-black uppercase italic">{DATOS_PAGO.titular}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
