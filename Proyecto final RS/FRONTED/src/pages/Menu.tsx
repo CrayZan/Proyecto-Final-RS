@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { 
   Utensils, Plus, Truck, Store, Wallet, 
-  CreditCard, Banknote, Navigation, Copy, Check, Loader2, X, AlertCircle 
+  CreditCard, Banknote, Navigation, Copy, Check, Loader2, X, Clock 
 } from "lucide-react"
 import { toast } from "sonner"
 import { ref, push, onValue } from "firebase/database"
@@ -31,20 +31,57 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
   const [catSeleccionada, setCatSeleccionada] = useState("Todas")
   const [promoPublicada, setPromoPublicada] = useState<any>(null)
 
-  // Obtener categorías únicas de los productos
+  // --- NUEVOS ESTADOS PARA CIERRE AUTOMÁTICO ---
+  const [estadoLocal, setEstadoLocal] = useState<'abierto' | 'cerrado' | 'auto'>('auto')
+  const [horarios, setHorarios] = useState<any>(null)
+  const [estaAbiertoAhora, setEstaAbiertoAhora] = useState(true)
+
   const categoriasUnicas = ["Todas", ...new Set(productos.map(p => p.categoria))];
 
+  // --- EFECTO UNIFICADO PARA FIREBASE ---
   useEffect(() => {
-    const promoRef = ref(db, 'config/promo')
-    const unsubscribe = onValue(promoRef, (snapshot) => {
+    const configRef = ref(db, 'config')
+    const unsubscribe = onValue(configRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val()
-        if (data.activa === true) setPromoPublicada(data)
+        
+        // Carga estado y horarios
+        setEstadoLocal(data.estado || 'auto')
+        setHorarios(data.horarios || null)
+
+        // Carga promo
+        if (data.promo?.activa === true) setPromoPublicada(data.promo)
         else setPromoPublicada(null)
       }
     })
     return () => unsubscribe()
   }, [])
+
+  // --- LÓGICA DE VALIDACIÓN DE HORARIOS ---
+  useEffect(() => {
+    const verificar = () => {
+      if (estadoLocal === 'abierto') return setEstaAbiertoAhora(true)
+      if (estadoLocal === 'cerrado') return setEstaAbiertoAhora(false)
+
+      if (estadoLocal === 'auto' && horarios) {
+        const ahora = new Date()
+        const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
+        const hoy = dias[ahora.getDay()]
+        const h = horarios[hoy]
+
+        if (!h || !h.activo) return setEstaAbiertoAhora(false)
+
+        const actual = ahora.getHours() * 100 + ahora.getMinutes()
+        const inicio = parseInt(h.inicio.replace(':', ''))
+        const fin = parseInt(h.fin.replace(':', ''))
+
+        setEstaAbiertoAhora(actual >= inicio && actual <= fin)
+      }
+    }
+    verificar()
+    const i = setInterval(verificar, 30000)
+    return () => clearInterval(i)
+  }, [estadoLocal, horarios])
 
   const total = carrito.reduce((acc, item) => acc + (item.precio * item.cant), 0)
 
@@ -81,6 +118,7 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
   }
 
   const enviarPedido = async () => {
+    if (!estaAbiertoAhora) return toast.error("El local está cerrado en este momento")
     if (carrito.length === 0) return toast.error("El carrito está vacío")
     if (entrega === 'mesa' && !numeroMesa) return toast.error("Por favor, ingresá el N° de Mesa")
     if (entrega === 'delivery' && !direccion) return toast.error("Falta la dirección o ubicación")
@@ -151,6 +189,14 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
           {perfil?.nombreLocal || "RestoWeb"}
         </h1>
         <div className={`h-1 w-20 ${tema.accent} rounded-full mt-2`}></div>
+        
+        {/* AVISO DE CIERRE */}
+        {!estaAbiertoAhora && (
+          <div className="mt-6 bg-red-600 text-white px-8 py-3 rounded-2xl flex items-center gap-3 animate-pulse shadow-xl">
+            <Clock size={20} />
+            <span className="font-black uppercase italic text-sm tracking-widest">Local Cerrado temporalmente</span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -194,9 +240,9 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
                   className={`flex-1 bg-black/5 rounded-2xl px-4 font-bold text-sm h-14 border-none ${tema.text}`} 
                   value={direccion} onChange={e => setDireccion(e.target.value)} 
                 />
-                <Button onClick={obtenerUbicacion} variant="outline" className={`h-14 w-14 rounded-2xl ${tema.border} ${tema.primary} shadow-sm`}>
+                <button onClick={obtenerUbicacion} className={`h-14 w-14 flex items-center justify-center rounded-2xl border ${tema.border} ${tema.primary} shadow-sm bg-white`}>
                   <Navigation size={20} />
-                </Button>
+                </button>
               </div>
             ) : (
               <p className={`w-full text-center font-black opacity-40 italic uppercase text-xs ${tema.text}`}>Retiro por local - Avisamos por WhatsApp</p>
@@ -234,7 +280,8 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
                         setCarrito([...carrito, { id: 'promo', nombre: promoPublicada.titulo, precio: Number(promoPublicada.precio), cant: 1 }]);
                         toast.success("¡Promoción agregada!");
                       }}
-                      className={`rounded-2xl h-14 px-8 font-black uppercase italic shadow-xl ${tema.accent}`}
+                      disabled={!estaAbiertoAhora}
+                      className={`rounded-2xl h-14 px-8 font-black uppercase italic shadow-xl ${estaAbiertoAhora ? tema.accent : 'bg-slate-300'}`}
                     >
                       AGREGAR PROMO
                     </Button>
@@ -247,12 +294,14 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
           {/* GRILLA DE PRODUCTOS */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {productos.filter(p => catSeleccionada === "Todas" || p.categoria === catSeleccionada).map(p => (
-              <Card key={p.id} className={`rounded-[2.5rem] overflow-hidden border-none shadow-sm ${tema.bgHeader} hover:shadow-xl transition-all group ${p.disponible === false ? 'opacity-50' : ''}`}>
+              <Card key={p.id} className={`rounded-[2.5rem] overflow-hidden border-none shadow-sm ${tema.bgHeader} hover:shadow-xl transition-all group ${(p.disponible === false || !estaAbiertoAhora) ? 'opacity-50' : ''}`}>
                 <div className="h-44 overflow-hidden relative">
                   <img src={p.imagen} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={p.nombre} />
-                  {p.disponible === false && (
+                  {(p.disponible === false || !estaAbiertoAhora) && (
                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[2px]">
-                      <span className="bg-red-600 text-white px-6 py-2 rounded-full font-black italic text-xs uppercase tracking-widest shadow-2xl">Agotado</span>
+                      <span className="bg-red-600 text-white px-6 py-2 rounded-full font-black italic text-[10px] uppercase tracking-widest shadow-2xl">
+                        {p.disponible === false ? 'Agotado' : 'Cerrado'}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -266,10 +315,10 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
                           setCarrito([...carrito, {...p, cant: 1}]);
                           toast.success(`${p.nombre} al carrito`);
                         }} 
-                        disabled={p.disponible === false}
-                        className={`rounded-2xl h-12 w-12 p-0 shadow-lg ${p.disponible === false ? 'bg-slate-200 text-slate-400' : tema.accent}`}
+                        disabled={p.disponible === false || !estaAbiertoAhora}
+                        className={`rounded-2xl h-12 w-12 p-0 shadow-lg ${(p.disponible === false || !estaAbiertoAhora) ? 'bg-slate-200 text-slate-400' : tema.accent}`}
                       >
-                        {p.disponible === false ? <X size={20}/> : <Plus size={24}/>}
+                        {(p.disponible === false || !estaAbiertoAhora) ? <X size={20}/> : <Plus size={24}/>}
                       </Button>
                    </div>
                 </CardContent>
@@ -281,7 +330,7 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
         {/* CARRITO (LADO DERECHO) */}
         <div className="lg:col-span-1">
           <Card className={`rounded-[3rem] shadow-2xl border-none sticky top-10 overflow-hidden border-t-8 ${tema.bgHeader} ${tema.border.replace('border-', 'border-t-')}`}>
-            <div className={`${tema.accent} p-8 text-center`}>
+            <div className={`${estaAbiertoAhora ? tema.accent : 'bg-slate-400'} p-8 text-center transition-colors`}>
                 <h3 className="opacity-50 font-black uppercase italic text-[10px] mb-1">Total a Pagar</h3>
                 <div className="text-4xl font-black italic tracking-tighter">${total.toLocaleString('es-AR')}</div>
             </div>
@@ -326,29 +375,25 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
                       <CreditCard size={18} className="text-sky-500 mb-1" /><span className={`text-[7px] font-black uppercase italic ${tema.text}`}>M. Pago</span>
                     </button>
                   </div>
-                  
-                  {metodoPago === 'transferencia' && (
-                    <div className={`p-4 rounded-2xl border bg-blue-500/5 ${tema.border} space-y-2`}>
-                      <div className="flex justify-between items-center">
-                        <span className={`text-[8px] font-black uppercase italic ${tema.text}`}>Alias: {DATOS_PAGO.alias}</span>
-                        <Button onClick={copiarAlias} size="sm" className="bg-blue-600 h-8 w-8 p-0 rounded-lg">
-                          {copiado ? <Check size={14}/> : <Copy size={14}/>}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
               <Button 
                 onClick={enviarPedido} 
-                disabled={loadingMP || carrito.length === 0}
-                className={`w-full h-16 rounded-[1.5rem] font-black text-xs uppercase italic shadow-2xl transition-all ${metodoPago === 'mercadopago' && entrega !== 'mesa' ? 'bg-[#009EE3] hover:bg-[#007EB5] text-white' : tema.accent}`}
+                disabled={loadingMP || carrito.length === 0 || !estaAbiertoAhora}
+                className={`w-full h-16 rounded-[1.5rem] font-black text-xs uppercase italic shadow-2xl transition-all ${!estaAbiertoAhora ? 'bg-slate-300 text-slate-500' : (metodoPago === 'mercadopago' && entrega !== 'mesa' ? 'bg-[#009EE3] hover:bg-[#007EB5] text-white' : tema.accent)}`}
               >
                 {loadingMP ? <Loader2 className="animate-spin" /> : 
+                 !estaAbiertoAhora ? 'LOCAL CERRADO' :
                  entrega === 'mesa' ? 'PEDIR A COCINA' : 
                  metodoPago === 'mercadopago' ? 'PAGAR AHORA' : 'CONFIRMAR PEDIDO'}
               </Button>
+              
+              {!estaAbiertoAhora && (
+                <p className="text-center font-black italic text-[9px] text-red-500 uppercase">
+                  Reabriremos según el horario establecido
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
