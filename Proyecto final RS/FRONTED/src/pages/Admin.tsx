@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { 
   Plus, Trash2, UploadCloud, Edit3, Save, Megaphone, 
   DollarSign, CalendarDays, Users, Settings, Palette, 
-  LogOut, LayoutDashboard, ExternalLink, ChevronRight, Check, Utensils, QrCode, Store
+  LogOut, LayoutDashboard, ExternalLink, ChevronRight, Check, Utensils, QrCode, Store, Clock, Power
 } from "lucide-react"
 import { ref, push, remove, update, onValue, set } from "firebase/database"
 import { db } from "../lib/firebase"
@@ -18,6 +18,8 @@ const CATEGORIAS_MENU = [
   "Postres", "Cerveza", "Vinos", "Gaseosas"
 ];
 
+const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+
 export default function Admin({ productos, tema, perfil }: { productos: any[], tema: any, perfil: any }) {
   const [tab, setTab] = useState<'menu' | 'reservas' | 'config'>('menu')
   const [nuevo, setNuevo] = useState({ nombre: "", precio: "", categoria: "Principales", imagen: "", descripcion: "" })
@@ -27,7 +29,12 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
   const [reservas, setReservas] = useState<any[]>([])
   const [temaActivo, setTemaActivo] = useState('naranja')
   
-  // ESTADO PARA EDITAR PERFIL
+  // ESTADO DE APERTURA Y HORARIOS
+  const [estadoLocal, setEstadoLocal] = useState({
+    manualAbierto: true,
+    horarios: DIAS_SEMANA.reduce((acc, dia) => ({ ...acc, [dia]: { inicio: "20:00", fin: "00:00" } }), {})
+  })
+
   const [perfilEdit, setPerfilEdit] = useState({
     nombreLocal: perfil?.nombreLocal || "RESTOAPP",
     logoUrl: perfil?.logoUrl || ""
@@ -42,6 +49,10 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
       if (snapshot.exists()) setTemaActivo(snapshot.val());
     });
 
+    onValue(ref(db, 'config/estado'), (snapshot) => {
+      if (snapshot.exists()) setEstadoLocal(snapshot.val());
+    });
+
     onValue(ref(db, 'reservas'), (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -52,7 +63,6 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
     });
   }, [])
 
-  // Sincronizar estado local del perfil cuando cambian las props
   useEffect(() => {
     if (perfil) setPerfilEdit(perfil);
   }, [perfil]);
@@ -63,6 +73,15 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
       toast.success("Perfil del local actualizado");
     } catch (e) {
       toast.error("Error al guardar el perfil");
+    }
+  }
+
+  const guardarEstadoLocal = async (nuevoEstado: any) => {
+    try {
+      await set(ref(db, 'config/estado'), nuevoEstado);
+      toast.success("Horarios y estado actualizados");
+    } catch (e) {
+      toast.error("Error al actualizar horarios");
     }
   }
 
@@ -287,6 +306,73 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            {/* NUEVA TARJETA: CONTROL DE ESTADO Y HORARIOS */}
+            <Card className={`rounded-[3rem] border-none shadow-xl p-8 relative overflow-hidden flex flex-col md:col-span-2 ${tema.bgHeader}`}>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6 z-10">
+                <div className="flex items-center gap-4">
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl ${estadoLocal.manualAbierto ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+                    <Power size={28} />
+                  </div>
+                  <div>
+                    <h3 className={`text-xl font-black uppercase italic ${tema.text}`}>Estado del Local</h3>
+                    <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest">Control manual y automático</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    const nuevo = { ...estadoLocal, manualAbierto: !estadoLocal.manualAbierto };
+                    setEstadoLocal(nuevo);
+                    guardarEstadoLocal(nuevo);
+                  }}
+                  className={`h-14 px-8 rounded-2xl font-black uppercase italic text-xs transition-all shadow-lg ${estadoLocal.manualAbierto ? 'bg-green-500/10 text-green-500 border-2 border-green-500' : 'bg-red-500 text-white'}`}
+                >
+                  {estadoLocal.manualAbierto ? "LOCAL ABIERTO (MANUAL)" : "LOCAL CERRADO (MANUAL)"}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 z-10">
+                {DIAS_SEMANA.map((dia) => (
+                  <div key={dia} className="bg-black/5 p-4 rounded-2xl border border-black/5">
+                    <p className={`text-[10px] font-black uppercase mb-3 ${tema.primary}`}>{dia}</p>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[9px] font-bold opacity-40">ABRE:</span>
+                        <input 
+                          type="time" 
+                          className="bg-transparent font-bold text-xs outline-none" 
+                          value={estadoLocal.horarios[dia]?.inicio || "20:00"} 
+                          onChange={(e) => {
+                            const nuevo = { ...estadoLocal, horarios: { ...estadoLocal.horarios, [dia]: { ...estadoLocal.horarios[dia], inicio: e.target.value } } };
+                            setEstadoLocal(nuevo);
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[9px] font-bold opacity-40">CIERRA:</span>
+                        <input 
+                          type="time" 
+                          className="bg-transparent font-bold text-xs outline-none" 
+                          value={estadoLocal.horarios[dia]?.fin || "00:00"} 
+                          onChange={(e) => {
+                            const nuevo = { ...estadoLocal, horarios: { ...estadoLocal.horarios, [dia]: { ...estadoLocal.horarios[dia], fin: e.target.value } } };
+                            setEstadoLocal(nuevo);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Button 
+                onClick={() => guardarEstadoLocal(estadoLocal)} 
+                className={`mt-6 h-12 rounded-xl font-black uppercase italic ${tema.accent} z-10`}
+              >
+                Guardar Horarios Semanales
+              </Button>
+              <Clock className="absolute -right-8 -bottom-8 opacity-5 size-40 -rotate-12" />
+            </Card>
+
             <Card className={`rounded-[3rem] border-none shadow-xl p-8 relative overflow-hidden group flex flex-col ${tema.bgHeader}`}>
               <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-xl ${tema.accent}`}>
                 <Store size={28} />
