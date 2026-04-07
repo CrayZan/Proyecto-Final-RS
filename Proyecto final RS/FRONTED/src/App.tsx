@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { Routes, Route, Link, Navigate } from "react-router-dom"
 import { Toaster } from "sonner"
-import { UtensilsCrossed, BadgeCheck, CalendarDays, Lock, QrCode, Sparkles } from "lucide-react"
+import { UtensilsCrossed, BadgeCheck, CalendarDays, Lock, QrCode, Sparkles, Store } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ref, onValue } from "firebase/database"
 import { db } from "./lib/firebase"
@@ -13,7 +13,6 @@ import Comandas from "./pages/Comandas"
 import GeneradorQR from "./pages/GeneradorQR"
 import Login from "./pages/Login"
 
-// DEFINICIÓN DE LOS TEMAS ELEGANTES (REVISADOS PARA DESCANSO VISUAL)
 const TEMAS = {
   naranja: {
     name: "Crema Coffee",
@@ -55,11 +54,25 @@ export default function App() {
   const [pedidos, setPedidos] = useState<any[]>([])
   const [reservas, setReservas] = useState<any[]>([])
   const [isAuth, setIsAuth] = useState(false)
-  
-  // Inicializamos con el tema por defecto para evitar pantallas blancas
   const [temaActual, setTemaActual] = useState(TEMAS.naranja)
+  
+  // --- NUEVO ESTADO PARA EL PERFIL DEL LOCAL ---
+  const [perfil, setPerfil] = useState({
+    nombreLocal: "RESTOAPP",
+    logoUrl: ""
+  })
 
-  // 1. Escuchar el cambio de tema con validación de seguridad
+  // 1. Escuchar Perfil del Local (Nombre y Logo)
+  useEffect(() => {
+    const perfilRef = ref(db, 'config/perfil');
+    return onValue(perfilRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setPerfil(snapshot.val());
+      }
+    });
+  }, []);
+
+  // 2. Escuchar Tema
   useEffect(() => {
     const temaRef = ref(db, 'config/tema');
     const unsubscribe = onValue(temaRef, (snapshot) => {
@@ -73,7 +86,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Carga de Productos
+  // 3. Carga de Productos, Pedidos y Reservas (Se mantienen igual)
   useEffect(() => {
     const prodRef = ref(db, 'productos');
     return onValue(prodRef, (snapshot) => {
@@ -82,7 +95,6 @@ export default function App() {
     })
   }, [])
 
-  // 3. Carga de Pedidos
   useEffect(() => {
     const pedRef = ref(db, 'pedidos');
     return onValue(pedRef, (snapshot) => {
@@ -92,7 +104,6 @@ export default function App() {
     })
   }, [])
 
-  // 4. Carga de Reservas
   useEffect(() => {
     const resRef = ref(db, 'reservas');
     return onValue(resRef, (snapshot) => {
@@ -106,14 +117,18 @@ export default function App() {
     <div className={`min-h-screen flex flex-col font-sans relative transition-colors duration-500 ${temaActual.bgPage} ${temaActual.text}`}>
       <Toaster position="top-right" richColors />
       
-      {/* HEADER ADAPTATIVO */}
       <header className={`border-b ${temaActual.bgHeader} ${temaActual.border} backdrop-blur-md sticky top-0 z-50 px-6 py-4 flex justify-between items-center shadow-sm`}>
         <Link to="/" className="flex items-center gap-2 group">
-          <div className={`${temaActual.bgIcon} p-2 rounded-xl group-hover:rotate-12 transition-transform shadow-lg`}>
-            <UtensilsCrossed className="h-5 w-5 text-white" />
+          <div className={`${temaActual.bgIcon} p-2 rounded-xl group-hover:rotate-12 transition-transform shadow-lg overflow-hidden flex items-center justify-center w-10 h-10`}>
+            {/* Si hay logoUrl, lo mostramos, si no, el icono por defecto */}
+            {perfil.logoUrl ? (
+              <img src={perfil.logoUrl} className="w-full h-full object-cover" />
+            ) : (
+              <UtensilsCrossed className="h-5 w-5 text-white" />
+            )}
           </div>
           <span className={`text-xl font-black tracking-tighter uppercase italic ${temaActual.text}`}>
-            RESTO<span className={temaActual.primary}>WEB</span>
+            {perfil.nombreLocal}
           </span>
         </Link>
         
@@ -150,11 +165,12 @@ export default function App() {
 
       <main className="flex-1">
         <Routes>
-          <Route path="/" element={<Home tema={temaActual} />} />
-          <Route path="/menu" element={<Menu productos={productos} tema={temaActual} />} />
+          {/* PASAMOS PERFIL COMO PROP A LAS RUTAS */}
+          <Route path="/" element={<Home tema={temaActual} perfil={perfil} />} />
+          <Route path="/menu" element={<Menu productos={productos} tema={temaActual} perfil={perfil} />} />
           <Route path="/login" element={<Login onLogin={() => setIsAuth(true)} tema={temaActual} />} />
           
-          <Route path="/admin" element={isAuth ? <Admin productos={productos} tema={temaActual} /> : <Navigate to="/login" />} />
+          <Route path="/admin" element={isAuth ? <Admin productos={productos} tema={temaActual} perfil={perfil} /> : <Navigate to="/login" />} />
           <Route path="/admin/qrs" element={isAuth ? <GeneradorQR tema={temaActual} /> : <Navigate to="/login" />} />
           <Route path="/comandas" element={isAuth ? <Comandas pedidos={pedidos} tema={temaActual} /> : <Navigate to="/login" />} />
           
