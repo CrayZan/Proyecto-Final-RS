@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { Routes, Route, Link, Navigate } from "react-router-dom"
 import { Toaster } from "sonner"
-import { UtensilsCrossed, BadgeCheck, CalendarDays, Lock, QrCode, Sparkles, Store } from "lucide-react"
+import { UtensilsCrossed, BadgeCheck, CalendarDays, Lock, QrCode, Sparkles, LogOut } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ref, onValue } from "firebase/database"
 import { db } from "./lib/firebase"
@@ -50,66 +50,45 @@ const TEMAS = {
 }
 
 export default function App() {
-  const [productos, setProductos] = useState<any[]>([])
-  const [pedidos, setPedidos] = useState<any[]>([])
-  const [reservas, setReservas] = useState<any[]>([])
+  const [productos, setProductos] = useState([])
+  const [pedidos, setPedidos] = useState([])
+  const [reservas, setReservas] = useState([])
   const [isAuth, setIsAuth] = useState(false)
   const [temaActual, setTemaActual] = useState(TEMAS.naranja)
-  
-  // --- NUEVO ESTADO PARA EL PERFIL DEL LOCAL ---
-  const [perfil, setPerfil] = useState({
-    nombreLocal: "RESTOAPP",
-    logoUrl: ""
-  })
+  const [perfil, setPerfil] = useState({ nombreLocal: "RESTOAPP", logoUrl: "" })
 
-  // 1. Escuchar Perfil del Local (Nombre y Logo)
   useEffect(() => {
     const perfilRef = ref(db, 'config/perfil');
     return onValue(perfilRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setPerfil(snapshot.val());
-      }
+      if (snapshot.exists()) setPerfil(snapshot.val());
     });
   }, []);
 
-  // 2. Escuchar Tema
   useEffect(() => {
     const temaRef = ref(db, 'config/tema');
-    const unsubscribe = onValue(temaRef, (snapshot) => {
+    return onValue(temaRef, (snapshot) => {
       const temaKey = snapshot.val();
-      if (temaKey && TEMAS[temaKey as keyof typeof TEMAS]) {
-        setTemaActual(TEMAS[temaKey as keyof typeof TEMAS]);
-      } else {
-        setTemaActual(TEMAS.naranja);
-      }
+      setTemaActual(TEMAS[temaKey] || TEMAS.naranja);
     });
-    return () => unsubscribe();
   }, []);
 
-  // 3. Carga de Productos, Pedidos y Reservas (Se mantienen igual)
   useEffect(() => {
     const prodRef = ref(db, 'productos');
-    return onValue(prodRef, (snapshot) => {
+    onValue(prodRef, (snapshot) => {
       const data = snapshot.val()
       if (data) setProductos(Object.keys(data).map(key => ({ id: key, ...data[key] })))
     })
-  }, [])
-
-  useEffect(() => {
+    
     const pedRef = ref(db, 'pedidos');
-    return onValue(pedRef, (snapshot) => {
+    onValue(pedRef, (snapshot) => {
       const data = snapshot.val()
-      if (data) setPedidos(Object.keys(data).map(key => ({ id: key, ...data[key] })).reverse())
-      else setPedidos([])
+      setPedidos(data ? Object.keys(data).map(key => ({ id: key, ...data[key] })).reverse() : [])
     })
-  }, [])
 
-  useEffect(() => {
     const resRef = ref(db, 'reservas');
-    return onValue(resRef, (snapshot) => {
+    onValue(resRef, (snapshot) => {
       const data = snapshot.val()
-      if (data) setReservas(Object.keys(data).map(key => ({ id: key, ...data[key] })))
-      else setReservas([])
+      setReservas(data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [])
     })
   }, [])
 
@@ -117,81 +96,83 @@ export default function App() {
     <div className={`min-h-screen flex flex-col font-sans relative transition-colors duration-500 ${temaActual.bgPage} ${temaActual.text}`}>
       <Toaster position="top-right" richColors />
       
-      <header className={`border-b ${temaActual.bgHeader} ${temaActual.border} backdrop-blur-md sticky top-0 z-50 px-6 py-4 flex justify-between items-center shadow-sm`}>
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className={`${temaActual.bgIcon} p-2 rounded-xl group-hover:rotate-12 transition-transform shadow-lg overflow-hidden flex items-center justify-center w-10 h-10`}>
-            {/* Si hay logoUrl, lo mostramos, si no, el icono por defecto */}
+      {/* HEADER RESPONSIVO */}
+      <header className={`border-b ${temaActual.bgHeader} ${temaActual.border} backdrop-blur-md sticky top-0 z-50 px-4 md:px-6 py-3 flex justify-between items-center shadow-sm`}>
+        <Link to="/" className="flex items-center gap-2 group shrink-0">
+          <div className={`${temaActual.bgIcon} p-2 rounded-xl group-hover:rotate-12 transition-transform shadow-lg overflow-hidden flex items-center justify-center w-9 h-9 md:w-10 md:h-10`}>
             {perfil.logoUrl ? (
-              <img src={perfil.logoUrl} className="w-full h-full object-cover" />
+              <img src={perfil.logoUrl} className="w-full h-full object-cover" alt="Logo" />
             ) : (
               <UtensilsCrossed className="h-5 w-5 text-white" />
             )}
           </div>
-          <span className={`text-xl font-black tracking-tighter uppercase italic ${temaActual.text}`}>
+          <span className={`text-base md:text-xl font-black tracking-tighter uppercase italic truncate max-w-[120px] md:max-w-none ${temaActual.text}`}>
             {perfil.nombreLocal}
           </span>
         </Link>
         
         {isAuth && (
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-1.5 md:gap-2 items-center">
+            {/* MESAS - Visible solo en Desktop o tablets */}
             <Link to="/admin/qrs" className="hidden sm:block">
-              <Badge variant="outline" className={`py-2 px-4 font-black text-[9px] rounded-full transition-all border ${temaActual.border} ${temaActual.badge}`}>
-                <QrCode size={12} className="mr-2" /> MESAS
+              <Badge variant="outline" className={`py-1.5 px-3 font-black text-[9px] rounded-full transition-all border ${temaActual.border} ${temaActual.badge}`}>
+                <QrCode size={12} className="mr-1.5" /> <span className="hidden lg:inline">MESAS</span>
               </Badge>
             </Link>
 
+            {/* RESERVAS - Texto adaptable */}
             <Link to="/admin">
-              <Badge variant="outline" className={`py-2 px-4 font-black text-[9px] rounded-full transition-all border ${temaActual.border} ${temaActual.accent} shadow-md`}>
-                <CalendarDays size={12} className="mr-2" /> RESERVAS ({reservas.length})
+              <Badge variant="outline" className={`py-1.5 px-3 font-black text-[9px] rounded-full transition-all border ${temaActual.border} ${temaActual.accent} shadow-md`}>
+                <CalendarDays size={12} className="mr-1.5" /> 
+                <span>{reservas.length} <span className="hidden xs:inline">RESERVAS</span></span>
               </Badge>
             </Link>
 
+            {/* PEDIDOS - Animado y adaptable */}
             <Link to="/comandas">
-              <Badge variant="outline" className={`py-2 px-4 font-black text-[9px] rounded-full transition-all border ${temaActual.border} ${temaActual.badge} shadow-sm animate-pulse`}>
-                <BadgeCheck size={12} className="mr-2" /> PEDIDOS ({pedidos.length})
+              <Badge variant="outline" className={`py-1.5 px-3 font-black text-[9px] rounded-full transition-all border ${temaActual.border} ${temaActual.badge} shadow-sm animate-pulse`}>
+                <BadgeCheck size={12} className="mr-1.5" /> 
+                <span>{pedidos.length} <span className="hidden xs:inline">PEDIDOS</span></span>
               </Badge>
             </Link>
             
             <button 
               onClick={() => setIsAuth(false)} 
-              className={`ml-2 p-2 rounded-full transition-colors ${temaActual.badge} hover:bg-red-500 hover:text-white`}
+              className={`ml-1 p-2 rounded-full transition-colors ${temaActual.badge} hover:bg-red-500 hover:text-white flex items-center justify-center`}
               title="Cerrar Sesión"
             >
-              <Sparkles size={16} />
+              <LogOut size={14} className="md:w-4 md:h-4" />
             </button>
           </div>
         )}
       </header>
 
-      <main className="flex-1">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6">
         <Routes>
-          {/* PASAMOS PERFIL COMO PROP A LAS RUTAS */}
           <Route path="/" element={<Home tema={temaActual} perfil={perfil} />} />
           <Route path="/menu" element={<Menu productos={productos} tema={temaActual} perfil={perfil} />} />
           <Route path="/login" element={<Login onLogin={() => setIsAuth(true)} tema={temaActual} />} />
-          
           <Route path="/admin" element={isAuth ? <Admin productos={productos} tema={temaActual} perfil={perfil} /> : <Navigate to="/login" />} />
           <Route path="/admin/qrs" element={isAuth ? <GeneradorQR tema={temaActual} /> : <Navigate to="/login" />} />
           <Route path="/comandas" element={isAuth ? <Comandas pedidos={pedidos} tema={temaActual} /> : <Navigate to="/login" />} />
-          
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
 
-      <footer className="p-8 mt-auto">
+      <footer className="p-6 md:p-8 mt-auto">
         {!isAuth && (
           <Link 
             to="/login" 
-            className={`fixed bottom-8 left-8 z-40 p-4 rounded-[2rem] shadow-2xl transition-all flex items-center gap-3 group border ${temaActual.border} ${temaActual.bgHeader} ${temaActual.primary} hover:scale-105`}
+            className={`fixed bottom-6 left-6 md:bottom-8 md:left-8 z-40 p-3 md:p-4 rounded-full md:rounded-[2rem] shadow-2xl transition-all flex items-center gap-3 group border ${temaActual.border} ${temaActual.bgHeader} ${temaActual.primary} hover:scale-105 active:scale-95`}
           >
             <Lock size={18} className="group-hover:rotate-12 transition-transform" />
-            <span className="text-[10px] font-black uppercase italic tracking-[0.2em] hidden md:inline">Panel Propietario</span>
+            <span className="text-[10px] font-black uppercase italic tracking-[0.2em] hidden sm:inline">Panel Propietario</span>
           </Link>
         )}
         
         <div className="flex flex-col items-center gap-2">
            <div className={`h-1 w-12 rounded-full ${temaActual.bgIcon} opacity-10`} />
-           <div className={`text-[10px] font-black uppercase tracking-[0.3em] opacity-40 ${temaActual.text}`}>
+           <div className={`text-[10px] font-black uppercase tracking-[0.3em] opacity-40 text-center ${temaActual.text}`}>
              San Vicente <span className={temaActual.primary}>•</span> 2026
            </div>
         </div>
