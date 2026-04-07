@@ -8,7 +8,7 @@ import {
   CreditCard, Banknote, Navigation, Copy, Check, Loader2, X 
 } from "lucide-react"
 import { toast } from "sonner"
-import { ref, push } from "firebase/database"
+import { ref, push, onValue } from "firebase/database" // Agregué onValue
 import { db } from "../lib/firebase"
 
 // --- CONFIGURACIÓN CENTRALIZADA ---
@@ -30,6 +30,25 @@ export default function Menu({ productos }: { productos: any[] }) {
   const [numeroMesa, setNumeroMesa] = useState(searchParams.get("mesa") || "")
   const [direccion, setDireccion] = useState("")
   const [catSeleccionada, setCatSeleccionada] = useState("Todas")
+
+  // --- LÓGICA PARA LA PROMOCIÓN (CORREGIDA) ---
+  const [promoPublicada, setPromoPublicada] = useState<any>(null)
+
+  useEffect(() => {
+    const promoRef = ref(db, 'config/promo')
+    const unsubscribe = onValue(promoRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val()
+        // Solo la guardamos si está activa en Firebase
+        if (data.activa === true) {
+          setPromoPublicada(data)
+        } else {
+          setPromoPublicada(null)
+        }
+      }
+    })
+    return () => unsubscribe()
+  }, [])
 
   const total = carrito.reduce((acc, item) => acc + (item.precio * item.cant), 0)
 
@@ -70,7 +89,6 @@ export default function Menu({ productos }: { productos: any[] }) {
     if (entrega === 'mesa' && !numeroMesa) return toast.error("Por favor, ingresá el N° de Mesa")
     if (entrega === 'delivery' && !direccion) return toast.error("Falta la dirección o ubicación")
 
-    // 1. Preparamos el objeto del pedido
     const pedidoData = {
       items: carrito,
       total,
@@ -85,11 +103,9 @@ export default function Menu({ productos }: { productos: any[] }) {
     try {
       setLoadingMP(true)
 
-      // 2. GUARDAMOS PRIMERO EN FIREBASE (Aparece en el panel inmediatamente)
       const nuevoPedidoRef = await push(ref(db, 'pedidos'), pedidoData)
       const pedidoId = nuevoPedidoRef.key
 
-      // 3. SI ES MERCADO PAGO, REDIRIGIMOS
       if (entrega !== 'mesa' && metodoPago === 'mercadopago') {
         try {
           const response = await fetch(DATOS_PAGO.urlBackendMP, {
@@ -101,7 +117,7 @@ export default function Menu({ productos }: { productos: any[] }) {
                 unit_price: Number(item.precio),
                 quantity: Number(item.cant)
               })),
-              external_reference: pedidoId, // Referencia para vincular el pago al pedido
+              external_reference: pedidoId,
               total: total 
             })
           })
@@ -116,7 +132,6 @@ export default function Menu({ productos }: { productos: any[] }) {
         }
       }
 
-      // 4. SI NO ES MP (O PAGO EN MESA), TERMINAMOS EL FLUJO AQUÍ
       let mensajeWA = `*NUEVO PEDIDO - ${entrega.toUpperCase()}*%0A`
       mensajeWA += `*Pago:* ${pedidoData.metodoPago.toUpperCase()}%0A`
       mensajeWA += `*Destino:* ${pedidoData.destino}%0A%0A`
@@ -178,6 +193,28 @@ export default function Menu({ productos }: { productos: any[] }) {
             )}
           </div>
 
+          {/* --- RENDERIZADO DE LA PROMOCIÓN (NUEVO) --- */}
+          {promoPublicada && (
+            <Card className="rounded-[2rem] overflow-hidden border-none bg-slate-900 text-white shadow-xl animate-in zoom-in duration-500">
+              <div className="flex flex-col md:flex-row">
+                <div className="md:w-1/3 h-40 md:h-auto"><img src={promoPublicada.imagen} className="w-full h-full object-cover opacity-80" alt="Promo" /></div>
+                <CardContent className="p-6 flex-1 flex flex-col justify-center">
+                  <h2 className="text-2xl font-black uppercase italic text-orange-400">{promoPublicada.titulo}</h2>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase mb-4">{promoPublicada.mensaje}</p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-2xl font-black">${Number(promoPublicada.precio).toLocaleString()}</span>
+                    <Button 
+                      onClick={() => setCarrito([...carrito, { id: 'promo', nombre: promoPublicada.titulo, precio: Number(promoPublicada.precio), cant: 1 }])}
+                      className="bg-white text-slate-900 hover:bg-orange-500 hover:text-white rounded-xl font-black uppercase italic"
+                    >
+                      AGREGAR PROMO
+                    </Button>
+                  </div>
+                </CardContent>
+              </div>
+            </Card>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {productos.filter(p => catSeleccionada === "Todas" || p.categoria === catSeleccionada).map(p => (
               <Card key={p.id} className="rounded-[2rem] overflow-hidden border-none shadow-sm bg-white">
@@ -197,8 +234,8 @@ export default function Menu({ productos }: { productos: any[] }) {
         <div className="lg:col-span-1">
           <Card className="rounded-[2.5rem] shadow-2xl border-none sticky top-24 bg-white overflow-hidden border-t-4 border-orange-500">
             <div className="bg-slate-900 p-6 text-center text-white">
-               <h3 className="text-white/50 font-black uppercase italic text-[9px]">Total Pedido</h3>
-               <div className="text-3xl font-black">${total.toLocaleString('es-AR')}</div>
+                <h3 className="text-white/50 font-black uppercase italic text-[9px]">Total Pedido</h3>
+                <div className="text-3xl font-black">${total.toLocaleString('es-AR')}</div>
             </div>
             
             <CardContent className="p-5 space-y-6">
