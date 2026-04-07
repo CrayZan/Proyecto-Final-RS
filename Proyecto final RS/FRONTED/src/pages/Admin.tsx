@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { 
-  Plus, Trash2, UploadCloud, Edit3, Save, Megaphone, 
+  Plus, Trash2, UploadCloud, Edit3, Megaphone, 
   DollarSign, CalendarDays, Settings, Palette, 
-  LogOut, LayoutDashboard, ExternalLink, ChevronRight, Check, Utensils, QrCode, Store, Clock, Power, BellRing, Volume2, CreditCard, Lock
+  LogOut, LayoutDashboard, ExternalLink, ChevronRight, Check, Utensils, QrCode, Store, Power, BellRing, CreditCard, Lock, X
 } from "lucide-react"
 import { ref, push, remove, update, onValue, set, onChildAdded, query, limitToLast } from "firebase/database"
 import { db } from "../lib/firebase"
@@ -48,6 +48,7 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
     logoUrl: perfil?.logoUrl || ""
   })
 
+  // --- LÓGICA DE FIREBASE E INICIALIZACIÓN ---
   useEffect(() => {
     audioRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2205/2205-preview.mp3")
     audioRef.current.loop = true
@@ -74,16 +75,16 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
       if (nuevoPedido && nuevoPedido.createdAt > startTime) {
         setUltimoPedido(nuevoPedido);
         setShowPedidoModal(true);
-        audioRef.current?.play().catch(() => console.log("Audio bloqueado"));
+        audioRef.current?.play().catch(() => console.log("Audio bloqueado por navegador"));
 
         toast.custom((t) => (
-          <div className={`${tema.bgHeader} border-2 ${tema.border} p-3 md:p-4 rounded-2xl shadow-2xl flex items-center gap-3 md:gap-4 animate-in slide-in-from-right-full w-[90vw] max-w-sm`}>
+          <div className={`${tema.bgHeader} border-2 ${tema.border} p-4 rounded-[1.5rem] shadow-2xl flex items-center gap-4 animate-in slide-in-from-right-full w-[90vw] max-w-sm`}>
             <div className={`${tema.accent} p-2 rounded-full animate-bounce text-white`}><BellRing size={16} /></div>
             <div className="flex-1 min-w-0">
-              <p className={`text-[8px] md:text-[10px] font-black uppercase opacity-50 ${tema.text}`}>¡Nuevo Pedido!</p>
-              <p className={`text-xs md:text-sm font-bold truncate ${tema.primary}`}>{nuevoPedido.nombre} {nuevoPedido.apellido}</p>
+              <p className={`text-[10px] font-black uppercase opacity-50 ${tema.text}`}>¡Nuevo Pedido!</p>
+              <p className={`text-sm font-bold truncate ${tema.primary}`}>{nuevoPedido.nombre} {nuevoPedido.apellido}</p>
             </div>
-            <button onClick={() => { toast.dismiss(t); cerrarAlerta(); }} className={`px-2 py-1.5 md:px-3 md:py-2 rounded-xl text-[8px] md:text-[10px] font-black uppercase ${tema.accent} text-white`}>Ver</button>
+            <button onClick={() => { toast.dismiss(t); cerrarAlerta(); }} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase ${tema.accent} text-white`}>Ver</button>
           </div>
         ), { duration: Infinity });
       }
@@ -92,6 +93,7 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
     return () => { unsubscribe(); audioRef.current?.pause(); };
   }, [tema])
 
+  // --- FUNCIONES DE CONTROL ---
   const cerrarAlerta = () => {
     setShowPedidoModal(false);
     audioRef.current?.pause();
@@ -104,9 +106,9 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
     if (passConfirm === "admin2026") {
       try { 
         await set(ref(db, 'config/pagos'), datosPago); 
-        toast.success("Datos actualizados"); 
+        toast.success("Datos bancarios actualizados"); 
         setShowConfirm(false); setPassConfirm("");
-      } catch (e) { toast.error("Error"); } 
+      } catch (e) { toast.error("Error al guardar"); } 
     } else toast.error("Clave incorrecta");
   }
 
@@ -129,10 +131,10 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
 
   const agregar = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nuevo.nombre || !nuevo.precio || !nuevo.imagen) return toast.error("Faltan datos");
-    await push(ref(db, 'productos'), { ...nuevo, precio: Number(nuevo.precio), disponible: true });
+    if (!nuevo.nombre || !nuevo.precio || !nuevo.imagen) return toast.error("Faltan datos obligatorios");
+    await push(ref(db, 'productos'), { ...nuevo, precio: Number(nuevo.precio), disponible: true, createdAt: Date.now() });
     setNuevo({ nombre: "", precio: "", categoria: "Principales", imagen: "", descripcion: "" });
-    toast.success("¡Publicado!");
+    toast.success("¡Producto publicado!");
   }
 
   const guardarEdicion = async (id: string) => {
@@ -142,129 +144,142 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
   }
 
   return (
-    <div className={`p-3 md:p-8 max-w-7xl mx-auto mb-24 animate-in fade-in duration-500 ${tema.bgPage}`}>
+    <div className={`min-h-screen p-3 md:p-8 max-w-7xl mx-auto pb-28 transition-colors duration-500 ${tema.bgPage}`}>
       
-      {/* MODAL DE NUEVO PEDIDO RESPONSIVO */}
+      {/* --- MODAL ALERTA NUEVO PEDIDO --- */}
       {showPedidoModal && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center p-3 md:p-4 bg-black/95 backdrop-blur-md">
-          <div className={`${tema.bgHeader} w-full max-w-md rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl border-4 ${tema.border} overflow-hidden`}>
-            <div className={`${tema.accent} p-6 md:p-10 flex flex-col items-center justify-center`}>
-              <BellRing className="text-white animate-bounce mb-4 w-12 h-12 md:w-20 md:h-20" />
-              <h2 className="text-2xl md:text-4xl font-black uppercase italic text-white text-center">¡NUEVA ORDEN!</h2>
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in">
+          <Card className={`${tema.bgHeader} w-full max-w-sm rounded-[3rem] shadow-2xl border-4 ${tema.border} overflow-hidden scale-in-center`}>
+            <div className={`${tema.accent} p-10 flex flex-col items-center justify-center relative`}>
+              <button onClick={cerrarAlerta} className="absolute top-6 right-6 text-white/50 hover:text-white"><X size={24}/></button>
+              <BellRing className="text-white animate-bounce mb-4 w-16 h-16" />
+              <h2 className="text-3xl font-black uppercase italic text-white text-center">¡NUEVA ORDEN!</h2>
             </div>
-            <div className="p-6 md:p-10 text-center space-y-4 md:space-y-6">
-              <h3 className={`text-xl md:text-3xl font-black uppercase italic truncate ${tema.primary}`}>{ultimoPedido?.nombre} {ultimoPedido?.apellido}</h3>
-              <div className="grid grid-cols-2 gap-2 md:gap-4 bg-black/5 p-4 md:p-6 rounded-3xl">
-                <div className="text-center border-r border-black/10">
-                  <p className="text-[8px] md:text-[10px] font-black opacity-40 uppercase">Personas</p>
-                  <p className={`text-lg md:text-xl font-black ${tema.text}`}>{ultimoPedido?.comensales}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-[8px] md:text-[10px] font-black opacity-40 uppercase">Hora</p>
-                  <p className={`text-lg md:text-xl font-black ${tema.text}`}>{ultimoPedido?.hora}hs</p>
-                </div>
+            <div className="p-8 text-center space-y-6">
+              <h3 className={`text-2xl font-black uppercase italic truncate ${tema.primary}`}>{ultimoPedido?.nombre} {ultimoPedido?.apellido}</h3>
+              <div className="flex justify-center gap-8 bg-black/5 p-6 rounded-3xl">
+                <div><p className="text-[10px] font-black opacity-40 uppercase">Comensales</p><p className={`text-2xl font-black ${tema.text}`}>{ultimoPedido?.comensales}</p></div>
+                <div className="w-px bg-black/10" />
+                <div><p className="text-[10px] font-black opacity-40 uppercase">Hora</p><p className={`text-2xl font-black ${tema.text}`}>{ultimoPedido?.hora}hs</p></div>
               </div>
-              <Button onClick={cerrarAlerta} className={`w-full h-16 md:h-20 rounded-[1.5rem] md:rounded-[2rem] font-black uppercase italic text-lg md:text-xl ${tema.accent}`}>
-                <Check className="mr-2 w-5 h-5 md:w-7 md:h-7" /> ATENDER
+              <Button onClick={cerrarAlerta} className={`w-full h-16 rounded-2xl font-black uppercase italic text-xl shadow-xl ${tema.accent}`}>
+                <Check className="mr-2 w-6 h-6" /> ATENDER
               </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
-      {/* CABECERA ADAPTATIVA */}
-      <div className={`flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-10 gap-4 md:gap-6 ${tema.bgHeader} p-4 md:p-6 rounded-[2rem] md:rounded-[2.5rem] shadow-sm border ${tema.border}`}>
-        <div className="w-full md:w-auto text-center md:text-left">
-          <div className="flex items-center justify-center md:justify-start gap-2 text-slate-400 font-black text-[9px] md:text-[10px] uppercase tracking-widest mb-1">
-            <LayoutDashboard size={12} /> <span>Panel</span> <ChevronRight size={12} /> <span className={tema.primary}>{tab}</span>
+      {/* --- CABECERA --- */}
+      <header className={`mb-8 ${tema.bgHeader} p-6 rounded-[2.5rem] shadow-sm border ${tema.border} flex flex-col md:flex-row justify-between items-center gap-6`}>
+        <div className="text-center md:text-left">
+          <div className="flex items-center justify-center md:justify-start gap-2 text-slate-400 font-black text-[10px] uppercase tracking-widest mb-1">
+            <LayoutDashboard size={14} /> <span>Admin</span> <ChevronRight size={14} /> <span className={tema.primary}>{tab}</span>
           </div>
-          <h1 className={`text-xl md:text-3xl font-black uppercase italic tracking-tighter ${tema.text}`}>Gestión <span className={tema.primary}>{perfilEdit.nombreLocal}</span></h1>
+          <h1 className={`text-2xl md:text-3xl font-black uppercase italic tracking-tighter ${tema.text}`}>
+            {perfilEdit.nombreLocal} <span className="opacity-30">Control</span>
+          </h1>
         </div>
         <div className="flex gap-2 w-full md:w-auto">
-          <Button variant="outline" onClick={() => window.open('/', '_blank')} className={`flex-1 md:flex-none rounded-xl md:rounded-2xl font-black uppercase italic text-[9px] md:text-[10px] ${tema.border} ${tema.text} h-10 md:h-12 bg-transparent`}><ExternalLink size={14} className="mr-1 md:mr-2" /> Web</Button>
-          <Button onClick={() => window.location.href = "/"} className="flex-1 md:flex-none bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl md:rounded-2xl font-black uppercase italic text-[9px] md:text-[10px] h-10 md:h-12 border-none"><LogOut size={14} className="mr-1 md:mr-2" /> Salir</Button>
+          <Button variant="outline" onClick={() => window.open('/', '_blank')} className={`flex-1 md:flex-none rounded-2xl font-black uppercase italic text-[10px] h-12 bg-transparent ${tema.border} ${tema.text}`}>
+            <ExternalLink size={16} className="mr-2" /> Web
+          </Button>
+          <Button onClick={() => window.location.href = "/"} className="flex-1 md:flex-none bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-2xl font-black uppercase italic text-[10px] h-12 border-none">
+            <LogOut size={16} className="mr-2" /> Salir
+          </Button>
         </div>
-      </div>
+      </header>
 
-      {/* TABS CON SCROLL LATERAL EN MÓVIL */}
-      <div className="flex overflow-x-auto no-scrollbar bg-black/5 p-1.5 md:p-2 rounded-[1.5rem] md:rounded-[2rem] mb-8 md:mb-12 max-w-2xl mx-auto border border-black/5 gap-1">
+      {/* --- NAVEGACIÓN TABS --- */}
+      <nav className="flex overflow-x-auto no-scrollbar bg-black/5 p-2 rounded-[2rem] mb-10 max-w-xl mx-auto border border-black/5">
         {(['menu', 'reservas', 'config'] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3 md:py-4 rounded-[1.2rem] md:rounded-[1.5rem] font-black uppercase italic text-[9px] md:text-[10px] transition-all ${tab === t ? `${tema.bgHeader} ${tema.text} shadow-lg scale-105` : 'text-slate-400'}`}>
-            {t === 'menu' ? <Utensils size={14}/> : t === 'reservas' ? <CalendarDays size={14}/> : <Settings size={14}/>}
-            {t === 'reservas' ? `${t} (${reservas.length})` : t}
+          <button 
+            key={t} 
+            onClick={() => setTab(t)} 
+            className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-4 rounded-[1.5rem] font-black uppercase italic text-[10px] transition-all ${tab === t ? `${tema.bgHeader} ${tema.text} shadow-xl scale-105` : 'text-slate-400 opacity-60'}`}
+          >
+            {t === 'menu' ? <Utensils size={16}/> : t === 'reservas' ? <CalendarDays size={16}/> : <Settings size={16}/>}
+            {t === 'reservas' && reservas.length > 0 ? `${t} (${reservas.length})` : t}
           </button>
         ))}
-      </div>
+      </nav>
 
+      {/* --- SECCIÓN: MENÚ --- */}
       {tab === 'menu' && (
-        <div className="space-y-6 md:space-y-10">
-          {/* PROMO CARD RESPONSIVA */}
-          <Card className={`rounded-[2rem] md:rounded-[2.5rem] border-none shadow-xl overflow-hidden border-b-4 md:border-b-8 ${tema.bgHeader} ${tema.border.replace('border-', 'border-b-')}`}>
-            <div className="p-5 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-center">
-              <div className="order-2 md:order-1 space-y-3 md:space-y-4">
-                <div className={`flex items-center gap-2 ${tema.primary}`}><Megaphone size={20} className="animate-bounce" /><h2 className={`font-black uppercase italic text-xl md:text-2xl ${tema.text}`}>Anuncio del Día</h2></div>
-                <Input className="bg-black/5 md:bg-black/10 border-none h-12 md:h-14 rounded-xl md:rounded-2xl font-bold" placeholder="Título" value={promo.titulo} onChange={e => setPromo({...promo, titulo: e.target.value})} />
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="relative flex-1"><DollarSign className={`absolute left-4 top-1/2 -translate-y-1/2 ${tema.primary}`} size={18} /><Input className="bg-black/5 md:bg-black/10 border-none h-12 md:h-14 rounded-xl md:rounded-2xl pl-12 font-bold" type="number" value={promo.precio} onChange={e => setPromo({...promo, precio: e.target.value})} /></div>
-                  <textarea className="flex-[2] bg-black/5 md:bg-black/10 border-none rounded-xl md:rounded-2xl p-4 text-sm min-h-[50px] outline-none" placeholder="Mensaje..." value={promo.mensaje} onChange={e => setPromo({...promo, mensaje: e.target.value})} />
+        <div className="space-y-8">
+          {/* PROMO CARD */}
+          <Card className={`rounded-[2.5rem] border-none shadow-2xl overflow-hidden border-b-8 ${tema.bgHeader} ${tema.border.replace('border-', 'border-b-')}`}>
+            <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div className="order-2 md:order-1 space-y-4">
+                <div className={`flex items-center gap-3 ${tema.primary}`}><Megaphone size={24} className="animate-bounce" /><h2 className={`font-black uppercase italic text-2xl ${tema.text}`}>Promo del Día</h2></div>
+                <Input className="bg-black/5 border-none h-14 rounded-2xl font-bold text-lg" placeholder="Título de la oferta..." value={promo.titulo} onChange={e => setPromo({...promo, titulo: e.target.value})} />
+                <div className="flex gap-3">
+                  <div className="relative w-1/3"><DollarSign className={`absolute left-4 top-1/2 -translate-y-1/2 ${tema.primary}`} size={18} /><Input className="bg-black/5 border-none h-14 rounded-2xl pl-10 font-black text-xl" type="number" value={promo.precio} onChange={e => setPromo({...promo, precio: e.target.value})} /></div>
+                  <textarea className="flex-1 bg-black/5 border-none rounded-2xl p-4 text-sm font-bold h-14 resize-none outline-none" placeholder="Mensaje corto..." value={promo.mensaje} onChange={e => setPromo({...promo, mensaje: e.target.value})} />
                 </div>
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <button onClick={() => setPromo({...promo, activa: !promo.activa})} className={`h-12 md:h-14 font-black rounded-xl md:rounded-2xl uppercase text-[8px] md:text-[10px] border-2 transition-all ${promo.activa ? `${tema.accent} border-transparent shadow-md` : 'border-slate-300 text-slate-400'}`}>{promo.activa ? "OFERTA ON" : "OFERTA OFF"}</button>
-                  <Button onClick={guardarPromo} className={`h-12 md:h-14 font-black uppercase rounded-xl md:rounded-2xl ${tema.accent}`}>Guardar</Button>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => setPromo({...promo, activa: !promo.activa})} className={`h-14 font-black rounded-2xl uppercase text-[10px] border-2 transition-all ${promo.activa ? `${tema.accent} border-transparent shadow-lg text-white` : 'border-slate-200 text-slate-300'}`}>
+                    {promo.activa ? "OFERTA ACTIVA" : "OFERTA DESACTIVADA"}
+                  </button>
+                  <Button onClick={guardarPromo} className={`h-14 font-black uppercase rounded-2xl shadow-xl ${tema.accent}`}>Actualizar Promo</Button>
                 </div>
               </div>
-              <label className="order-1 md:order-2 block h-48 md:h-64 rounded-[1.5rem] md:rounded-[2rem] border-2 border-dashed border-black/10 overflow-hidden cursor-pointer relative group">
-                {promo.imagen ? <img src={promo.imagen} className="w-full h-full object-cover" /> : <div className="flex flex-col items-center justify-center h-full opacity-30 font-black text-[9px] md:text-[10px] uppercase"><UploadCloud className="mb-1" size={24} /> Subir Imagen</div>}
+              <label className="order-1 md:order-2 block h-60 rounded-[2rem] border-4 border-dashed border-black/5 overflow-hidden cursor-pointer relative group transition-all hover:border-orange-500/20">
+                {promo.imagen ? <img src={promo.imagen} className="w-full h-full object-cover" alt="Promo" /> : <div className="flex flex-col items-center justify-center h-full opacity-20 font-black text-[10px] uppercase"><UploadCloud className="mb-2" size={32} /> Subir Imagen</div>}
                 <input type="file" className="hidden" onChange={(e) => handleFileChange(e, 'promo')} />
               </label>
             </div>
           </Card>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-10">
-            {/* FORMULARIO AGREGAR */}
-            <div className="xl:col-span-1">
-              <Card className={`rounded-[2rem] md:rounded-[3rem] border-none shadow-xl xl:sticky xl:top-10 overflow-hidden border-t-8 ${tema.bgHeader} ${tema.border.replace('border-', 'border-t-')}`}>
-                <div className={`${tema.accent} p-4 md:p-6 text-center font-black uppercase text-[10px] md:text-xs italic text-white flex items-center justify-center gap-2`}><Plus size={16}/> Nuevo Producto</div>
-                <CardContent className="p-5 md:p-8 space-y-4">
-                  <label className="block h-40 md:h-48 border-2 border-dashed border-black/5 rounded-[1.5rem] md:rounded-[2rem] overflow-hidden cursor-pointer bg-black/5 flex items-center justify-center">
-                    {nuevo.imagen ? <img src={nuevo.imagen} className="w-full h-full object-cover" /> : <UploadCloud size={30} className="opacity-20"/>}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            {/* FORMULARIO AGREGAR PRODUCTO */}
+            <div className="lg:col-span-1">
+              <Card className={`rounded-[3rem] border-none shadow-2xl sticky top-8 overflow-hidden border-t-8 ${tema.bgHeader} ${tema.border.replace('border-', 'border-t-')}`}>
+                <div className={`${tema.accent} py-4 text-center font-black uppercase text-xs italic text-white`}>Añadir al Menú</div>
+                <CardContent className="p-8 space-y-4">
+                  <label className="block h-44 border-2 border-dashed border-black/5 rounded-[2rem] overflow-hidden cursor-pointer bg-black/5 flex items-center justify-center group">
+                    {nuevo.imagen ? <img src={nuevo.imagen} className="w-full h-full object-cover" /> : <UploadCloud size={30} className="opacity-10 group-hover:opacity-30 transition-all"/>}
                     <input type="file" className="hidden" onChange={(e) => handleFileChange(e, 'producto')} />
                   </label>
-                  <Input className="rounded-xl h-12 md:h-14 font-bold bg-black/5 border-none" placeholder="Nombre" value={nuevo.nombre} onChange={e => setNuevo({...nuevo, nombre: e.target.value})} />
+                  <Input className="rounded-2xl h-14 font-bold bg-black/5 border-none" placeholder="Nombre del plato" value={nuevo.nombre} onChange={e => setNuevo({...nuevo, nombre: e.target.value})} />
                   <div className="grid grid-cols-2 gap-3">
-                    <Input className="rounded-xl h-12 md:h-14 font-bold bg-black/5 border-none" type="number" placeholder="Precio $" value={nuevo.precio} onChange={e => setNuevo({...nuevo, precio: e.target.value})} />
-                    <select className="border-none rounded-xl h-12 md:h-14 px-3 text-[9px] md:text-[10px] font-black uppercase bg-black/5 outline-none" value={nuevo.categoria} onChange={e => setNuevo({...nuevo, categoria: e.target.value})}>{CATEGORIAS_MENU.map(c => <option key={c} value={c} className="bg-slate-800 text-white">{c}</option>)}</select>
+                    <Input className="rounded-2xl h-14 font-black bg-black/5 border-none" type="number" placeholder="Precio $" value={nuevo.precio} onChange={e => setNuevo({...nuevo, precio: e.target.value})} />
+                    <select className="border-none rounded-2xl h-14 px-4 text-[10px] font-black uppercase bg-black/5 outline-none cursor-pointer" value={nuevo.categoria} onChange={e => setNuevo({...nuevo, categoria: e.target.value})}>
+                      {CATEGORIAS_MENU.map(c => <option key={c} value={c} className="bg-slate-800 text-white">{c}</option>)}
+                    </select>
                   </div>
-                  <textarea className="w-full bg-black/5 border-none rounded-xl p-4 text-sm font-bold min-h-[80px] outline-none" placeholder="Descripción..." value={nuevo.descripcion} onChange={e => setNuevo({...nuevo, descripcion: e.target.value})} />
-                  <Button onClick={agregar} className={`w-full h-14 md:h-16 font-black uppercase italic rounded-xl md:rounded-2xl ${tema.accent}`}>Publicar</Button>
+                  <textarea className="w-full bg-black/5 border-none rounded-2xl p-4 text-sm font-bold min-h-[100px] outline-none" placeholder="Descripción opcional..." value={nuevo.descripcion} onChange={e => setNuevo({...nuevo, descripcion: e.target.value})} />
+                  <Button onClick={agregar} className={`w-full h-16 font-black uppercase italic rounded-2xl shadow-xl ${tema.accent}`}>Publicar Producto</Button>
                 </CardContent>
               </Card>
             </div>
 
-            {/* LISTA DE PRODUCTOS RESPONSIVA */}
-            <div className="xl:col-span-2 space-y-3 md:space-y-6">
+            {/* LISTA DE PRODUCTOS */}
+            <div className="lg:col-span-2 space-y-4">
               {productos.map(p => (
-                <div key={p.id} className={`${tema.bgHeader} p-3 md:p-4 rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm border ${tema.border} flex flex-col sm:flex-row items-center gap-3 md:gap-5 transition-all ${p.disponible === false ? 'opacity-40 grayscale' : ''}`}>
-                  <div className="relative w-full sm:w-24 h-40 sm:h-24">
-                    <img src={p.imagen} className="w-full h-full rounded-[1.2rem] md:rounded-[1.5rem] object-cover shadow-lg" />
-                    {p.disponible === false && <div className="absolute inset-0 bg-black/60 rounded-[1.2rem] flex items-center justify-center"><span className="text-[8px] font-black text-white bg-red-600 px-2 py-1 rounded-full">AGOTADO</span></div>}
+                <div key={p.id} className={`${tema.bgHeader} p-4 rounded-[2.5rem] shadow-sm border ${tema.border} flex flex-col sm:flex-row items-center gap-5 transition-all group hover:shadow-xl ${p.disponible === false ? 'opacity-50 grayscale' : ''}`}>
+                  <div className="relative w-full sm:w-28 h-40 sm:h-28 shrink-0">
+                    <img src={p.imagen} className="w-full h-full rounded-3xl object-cover shadow-md" alt={p.nombre} />
+                    {p.disponible === false && <div className="absolute inset-0 bg-black/40 rounded-3xl flex items-center justify-center"><span className="text-[10px] font-black text-white bg-red-600 px-3 py-1 rounded-full shadow-lg">AGOTADO</span></div>}
                   </div>
-                  <div className="flex-1 text-center sm:text-left w-full">
-                    <p className="font-black uppercase text-[8px] opacity-40 mb-0.5">{p.categoria}</p>
-                    <p className={`font-black uppercase text-base md:text-lg leading-tight mb-1 md:mb-2 ${tema.text}`}>{p.nombre}</p>
+                  <div className="flex-1 text-center sm:text-left min-w-0">
+                    <p className="font-black uppercase text-[9px] opacity-30 mb-0.5 tracking-widest">{p.categoria}</p>
+                    <p className={`font-black uppercase text-xl leading-tight mb-2 truncate ${tema.text}`}>{p.nombre}</p>
                     {editandoId === p.id ? (
                       <div className="flex gap-2 justify-center sm:justify-start">
-                        <Input className="h-9 w-24 text-xs font-bold bg-black/10 border-none" value={editForm.precio} onChange={e => setEditForm({...editForm, precio: e.target.value})} />
-                        <Button onClick={() => guardarEdicion(p.id)} className="h-9 bg-green-600 text-white px-3 rounded-lg font-black text-[9px]">OK</Button>
+                        <Input className="h-10 w-28 font-black text-lg bg-black/10 border-none" value={editForm.precio} onChange={e => setEditForm({...editForm, precio: e.target.value})} />
+                        <Button onClick={() => guardarEdicion(p.id)} className="h-10 bg-green-600 text-white px-5 rounded-xl font-black">OK</Button>
                       </div>
                     ) : (
-                      <span className={`${tema.primary} font-black italic text-lg md:text-xl`}>${p.precio}</span>
+                      <span className={`${tema.primary} font-black italic text-2xl`}>${p.precio.toLocaleString()}</span>
                     )}
                   </div>
-                  <div className="flex gap-2 w-full sm:w-auto justify-center">
-                    <button onClick={() => update(ref(db, `productos/${p.id}`), { disponible: p.disponible === false })} className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-all ${p.disponible === false ? 'bg-orange-500 text-white' : 'bg-black/5 text-slate-400'}`}>{p.disponible === false ? <Check size={18} /> : <Utensils size={18} />}</button>
-                    <button onClick={() => { setEditandoId(p.id); setEditForm({ precio: p.precio.toString(), descripcion: p.descripcion || "" }); }} className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-black/5 text-slate-400 hover:text-blue-500 flex items-center justify-center"><Edit3 size={18}/></button>
-                    <button onClick={() => confirm("¿Borrar?") && remove(ref(db, `productos/${p.id}`))} className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-black/5 text-slate-400 hover:text-red-500 flex items-center justify-center"><Trash2 size={18}/></button>
+                  <div className="flex gap-3 shrink-0">
+                    <button onClick={() => update(ref(db, `productos/${p.id}`), { disponible: p.disponible === false })} className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-sm ${p.disponible === false ? 'bg-orange-500 text-white shadow-orange-200' : 'bg-black/5 text-slate-400 hover:bg-slate-200'}`} title="Disponibilidad">
+                      {p.disponible === false ? <Check size={20} strokeWidth={3} /> : <Utensils size={20} />}
+                    </button>
+                    <button onClick={() => { setEditandoId(p.id); setEditForm({ precio: p.precio.toString(), descripcion: p.descripcion || "" }); }} className="w-12 h-12 rounded-2xl bg-black/5 text-slate-400 hover:bg-blue-500 hover:text-white flex items-center justify-center transition-all shadow-sm"><Edit3 size={20}/></button>
+                    <button onClick={() => confirm("¿Seguro de eliminar?") && remove(ref(db, `productos/${p.id}`))} className="w-12 h-12 rounded-2xl bg-black/5 text-slate-400 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all shadow-sm"><Trash2 size={20}/></button>
                   </div>
                 </div>
               ))}
@@ -273,115 +288,129 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
         </div>
       )}
 
+      {/* --- SECCIÓN: RESERVAS/PEDIDOS --- */}
       {tab === 'reservas' && (
-        <div className="space-y-3 md:space-y-4 max-w-3xl mx-auto">
-          {reservas.length === 0 ? <p className="text-center opacity-30 font-black uppercase py-20 text-xs tracking-widest">No hay pedidos</p> : 
+        <div className="space-y-4 max-w-2xl mx-auto animate-in slide-in-from-bottom-4">
+          {reservas.length === 0 ? (
+            <div className="text-center py-32 opacity-20"><Utensils size={64} className="mx-auto mb-4" /><p className="font-black uppercase italic">Sin órdenes pendientes</p></div>
+          ) : (
             reservas.map(r => (
-              <Card key={r.id} className={`rounded-[2rem] md:rounded-[3rem] border-none shadow-lg overflow-hidden ${tema.bgHeader}`}>
-                <CardContent className="p-5 md:p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-                  <div className="text-center sm:text-left">
-                    <h3 className={`font-black uppercase italic text-sm md:text-base ${tema.text}`}>{r.nombre} {r.apellido}</h3>
-                    <p className="text-[10px] md:text-xs opacity-50 font-bold">{r.fecha} • {r.hora}hs • {r.comensales} Pers.</p>
+              <Card key={r.id} className={`rounded-[2.5rem] border-none shadow-xl overflow-hidden ${tema.bgHeader} border-l-8 ${tema.border.replace('border-', 'border-l-')}`}>
+                <CardContent className="p-6 flex flex-col sm:flex-row justify-between items-center gap-6">
+                  <div className="text-center sm:text-left space-y-1">
+                    <h3 className={`font-black uppercase italic text-lg leading-none ${tema.text}`}>{r.nombre} {r.apellido}</h3>
+                    <div className="flex flex-wrap justify-center sm:justify-start gap-x-4 gap-y-1 text-xs font-bold opacity-60 italic">
+                      <span>{r.fecha}</span><span>{r.hora}HS</span><span>{r.comensales} PERSONAS</span>
+                    </div>
                   </div>
-                  <Button onClick={() => remove(ref(db, `reservas/${r.id}`))} variant="destructive" className="w-full sm:w-auto rounded-xl font-black uppercase text-[9px] md:text-[10px] h-10 md:h-12">Finalizar</Button>
+                  <Button onClick={() => remove(ref(db, `reservas/${r.id}`))} className="w-full sm:w-auto h-12 px-8 rounded-2xl font-black uppercase italic text-[10px] bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-100">FINALIZAR</Button>
                 </CardContent>
               </Card>
             ))
-          }
+          )}
         </div>
       )}
 
+      {/* --- SECCIÓN: CONFIGURACIÓN --- */}
       {tab === 'config' && (
-        <div className="max-w-5xl mx-auto space-y-6 md:space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+        <div className="max-w-4xl mx-auto space-y-10">
+          
+          {/* PAGOS */}
+          <Card className={`rounded-[3rem] border-none shadow-2xl p-8 ${tema.bgHeader}`}>
+            <div className="flex items-center gap-4 mb-8">
+              <div className={`${tema.accent} p-4 rounded-2xl text-white shadow-lg`}><CreditCard size={28} /></div>
+              <div><h3 className={`text-2xl font-black uppercase italic ${tema.text}`}>Pagos Digitales</h3><p className="text-[10px] font-bold opacity-30 uppercase tracking-widest">Configuración de Transferencia</p></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className="space-y-2"><p className="text-[10px] font-black uppercase opacity-40 ml-2">Alias Bancario</p><Input className="bg-black/5 border-none font-bold h-14 rounded-2xl px-6" placeholder="AL.IAS.RESTO" value={datosPago.alias} onChange={e => setDatosPago({...datosPago, alias: e.target.value})} /></div>
+              <div className="space-y-2"><p className="text-[10px] font-black uppercase opacity-40 ml-2">CBU / CVU</p><Input className="bg-black/5 border-none font-bold h-14 rounded-2xl px-6 text-sm" placeholder="22 dígitos..." value={datosPago.cbu} onChange={e => setDatosPago({...datosPago, cbu: e.target.value})} /></div>
+              <div className="space-y-2"><p className="text-[10px] font-black uppercase opacity-40 ml-2">Titular de Cuenta</p><Input className="bg-black/5 border-none font-bold h-14 rounded-2xl px-6" placeholder="Nombre completo" value={datosPago.titular} onChange={e => setDatosPago({...datosPago, titular: e.target.value})} /></div>
+            </div>
             
-            {/* SECCIÓN PAGOS RESPONSIVA */}
-            <Card className={`rounded-[2rem] md:rounded-[3rem] border-none shadow-xl p-6 md:p-8 md:col-span-2 ${tema.bgHeader}`}>
-              <div className="flex items-center gap-3 md:gap-4 mb-6">
-                <div className={`${tema.accent} p-3 rounded-xl text-white`}><CreditCard size={24} /></div>
-                <div>
-                  <h3 className={`text-lg md:text-xl font-black uppercase italic ${tema.text}`}>Pagos</h3>
-                  <p className="text-[9px] font-bold opacity-40 uppercase">Datos para transferencia</p>
-                </div>
+            {showConfirm && (
+              <div className="mb-6 p-6 bg-red-500/5 border-2 border-red-500/10 rounded-3xl animate-in zoom-in">
+                <p className="text-[10px] font-black uppercase text-red-500 mb-3 text-center tracking-widest">Seguridad Requerida</p>
+                <div className="relative max-w-xs mx-auto"><Lock className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" size={18} /><Input type="password" title="Pass" className="bg-white border-none font-black h-14 rounded-2xl pl-12 text-center tracking-[0.5em]" placeholder="••••" value={passConfirm} onChange={e => setPassConfirm(e.target.value)} /></div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
-                <div className="space-y-1"><p className="text-[9px] font-black uppercase opacity-40 ml-2">Alias</p><Input className="bg-black/5 border-none font-bold h-11 md:h-12 rounded-xl" placeholder="Alias..." value={datosPago.alias} onChange={e => setDatosPago({...datosPago, alias: e.target.value})} /></div>
-                <div className="space-y-1"><p className="text-[9px] font-black uppercase opacity-40 ml-2">CBU</p><Input className="bg-black/5 border-none font-bold h-11 md:h-12 rounded-xl" placeholder="22 dígitos" value={datosPago.cbu} onChange={e => setDatosPago({...datosPago, cbu: e.target.value})} /></div>
-                <div className="space-y-1"><p className="text-[9px] font-black uppercase opacity-40 ml-2">Titular</p><Input className="bg-black/5 border-none font-bold h-11 md:h-12 rounded-xl" placeholder="Nombre" value={datosPago.titular} onChange={e => setDatosPago({...datosPago, titular: e.target.value})} /></div>
-              </div>
-              
-              {showConfirm && (
-                <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
-                  <p className="text-[9px] font-black uppercase text-red-500 mb-2 ml-1">Clave de Seguridad</p>
-                  <div className="relative"><Lock className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" size={16} /><Input type="password" className="bg-white border-none font-bold h-11 rounded-xl pl-11" placeholder="ADMIN PASS" value={passConfirm} onChange={e => setPassConfirm(e.target.value)} /></div>
-                </div>
-              )}
-              <div className="flex flex-col sm:flex-row gap-2">
-                {showConfirm && <Button onClick={() => { setShowConfirm(false); setPassConfirm(""); }} variant="outline" className="h-11 md:h-12 rounded-xl font-black uppercase italic">Cancelar</Button>}
-                <Button onClick={guardarPagos} className={`flex-1 h-11 md:h-12 rounded-xl font-black uppercase italic ${showConfirm ? 'bg-red-600' : tema.accent}`}>{showConfirm ? "Confirmar" : "Guardar Datos"}</Button>
-              </div>
-            </Card>
+            )}
+            <div className="flex flex-col sm:flex-row gap-3">
+              {showConfirm && <Button onClick={() => { setShowConfirm(false); setPassConfirm(""); }} variant="outline" className="h-14 rounded-2xl font-black uppercase italic flex-1 border-2">Cancelar</Button>}
+              <Button onClick={guardarPagos} className={`flex-[2] h-14 rounded-2xl font-black uppercase italic shadow-xl ${showConfirm ? 'bg-red-600' : tema.accent}`}>{showConfirm ? "Confirmar Cambio" : "Guardar Datos de Pago"}</Button>
+            </div>
+          </Card>
 
-            {/* ESTADO LOCAL - GRID ADAPTATIVO */}
-            <Card className={`rounded-[2rem] md:rounded-[3rem] border-none shadow-xl p-6 md:p-8 md:col-span-2 ${tema.bgHeader}`}>
-              <div className="flex flex-col sm:flex-row justify-between items-center mb-6 md:mb-8 gap-4">
-                <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg ${estadoLocal.manualAbierto ? 'bg-green-500' : 'bg-red-500'} text-white`}><Power size={24} /></div>
-                  <h3 className={`text-lg md:text-xl font-black uppercase italic ${tema.text}`}>Estado</h3>
-                </div>
-                <button onClick={() => { const n = { ...estadoLocal, manualAbierto: !estadoLocal.manualAbierto }; setEstadoLocal(n); guardarEstadoLocal(n); }} className={`w-full sm:w-auto h-12 px-6 rounded-xl font-black uppercase italic text-[10px] ${estadoLocal.manualAbierto ? 'bg-green-500/10 text-green-500 border-2 border-green-500' : 'bg-red-500 text-white'}`}>{estadoLocal.manualAbierto ? "ABIERTO" : "CERRADO"}</button>
+          {/* ESTADO Y HORARIOS */}
+          <Card className={`rounded-[3rem] border-none shadow-2xl p-8 ${tema.bgHeader}`}>
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-10 gap-6 text-center sm:text-left">
+              <div className="flex items-center gap-4">
+                <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center shadow-2xl transition-all duration-700 ${estadoLocal.manualAbierto ? 'bg-green-500 shadow-green-200' : 'bg-red-500 shadow-red-200'} text-white`}><Power size={32} /></div>
+                <div><h3 className={`text-2xl font-black uppercase italic ${tema.text}`}>Estado del Local</h3><p className="text-[10px] font-bold opacity-30 uppercase">Control de apertura manual</p></div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
-                {DIAS_SEMANA.map((dia) => (
-                  <div key={dia} className="bg-black/5 p-3 md:p-4 rounded-xl md:rounded-2xl border border-black/5">
-                    <p className={`text-[9px] md:text-[10px] font-black uppercase mb-2 ${tema.primary}`}>{dia}</p>
-                    <div className="space-y-1.5 text-[8px] md:text-[9px] font-bold opacity-60">
-                      <div className="flex justify-between"><span>ABRE:</span><input type="time" className="bg-transparent outline-none w-12" value={(estadoLocal.horarios as any)[dia]?.inicio || "20:00"} onChange={(e) => setEstadoLocal({ ...estadoLocal, horarios: { ...estadoLocal.horarios, [dia]: { ...(estadoLocal.horarios as any)[dia], inicio: e.target.value } } })} /></div>
-                      <div className="flex justify-between"><span>CIERRA:</span><input type="time" className="bg-transparent outline-none w-12" value={(estadoLocal.horarios as any)[dia]?.fin || "00:00"} onChange={(e) => setEstadoLocal({ ...estadoLocal, horarios: { ...estadoLocal.horarios, [dia]: { ...(estadoLocal.horarios as any)[dia], fin: e.target.value } } })} /></div>
-                    </div>
+              <button 
+                onClick={() => { const n = { ...estadoLocal, manualAbierto: !estadoLocal.manualAbierto }; setEstadoLocal(n); guardarEstadoLocal(n); }} 
+                className={`h-16 px-10 rounded-2xl font-black uppercase italic tracking-widest transition-all ${estadoLocal.manualAbierto ? 'bg-green-500/10 text-green-600 border-4 border-green-500' : 'bg-red-500 text-white shadow-xl shadow-red-200 ring-4 ring-red-100'}`}
+              >
+                {estadoLocal.manualAbierto ? "LOCAL ABIERTO" : "LOCAL CERRADO"}
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+              {DIAS_SEMANA.map((dia) => (
+                <div key={dia} className="bg-black/5 p-4 rounded-2xl border border-black/5 flex flex-col items-center">
+                  <p className={`text-[10px] font-black uppercase mb-3 ${tema.primary}`}>{dia.substring(0,3)}</p>
+                  <div className="space-y-3 w-full text-[9px] font-black opacity-60">
+                    <div className="text-center"><span className="block opacity-40 mb-1 uppercase">Abre</span><input type="time" title="Apertura" className="bg-white/50 w-full rounded-lg p-1 text-center outline-none" value={(estadoLocal.horarios as any)[dia]?.inicio || "20:00"} onChange={(e) => setEstadoLocal({ ...estadoLocal, horarios: { ...estadoLocal.horarios, [dia]: { ...(estadoLocal.horarios as any)[dia], inicio: e.target.value } } })} /></div>
+                    <div className="text-center"><span className="block opacity-40 mb-1 uppercase">Cierra</span><input type="time" title="Cierre" className="bg-white/50 w-full rounded-lg p-1 text-center outline-none" value={(estadoLocal.horarios as any)[dia]?.fin || "00:00"} onChange={(e) => setEstadoLocal({ ...estadoLocal, horarios: { ...estadoLocal.horarios, [dia]: { ...(estadoLocal.horarios as any)[dia], fin: e.target.value } } })} /></div>
                   </div>
-                ))}
-              </div>
-              <Button onClick={() => guardarEstadoLocal(estadoLocal)} className={`mt-6 w-full h-11 md:h-12 rounded-xl font-black uppercase italic ${tema.accent}`}>Guardar Horarios</Button>
-            </Card>
-
-            {/* PERFIL */}
-            <Card className={`rounded-[2rem] md:rounded-[3rem] border-none shadow-xl p-6 md:p-8 ${tema.bgHeader}`}>
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 md:mb-6 shadow-xl ${tema.accent} text-white`}><Store size={24} /></div>
-              <h3 className={`text-lg md:text-xl font-black uppercase italic mb-5 ${tema.text}`}>Perfil</h3>
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <label className="relative shrink-0 w-16 h-16 rounded-xl overflow-hidden cursor-pointer bg-black/5 border-2 border-dashed border-black/10 flex items-center justify-center">{perfilEdit.logoUrl ? <img src={perfilEdit.logoUrl} className="w-full h-full object-cover" /> : <UploadCloud size={20} className="opacity-20" />}<input type="file" className="hidden" onChange={(e) => handleFileChange(e, 'logo')} /></label>
-                  <div className="flex-1"><p className="text-[9px] font-black uppercase opacity-40 mb-1">Nombre</p><Input className="bg-black/5 border-none font-bold h-11 rounded-xl uppercase text-xs" value={perfilEdit.nombreLocal} onChange={e => setPerfilEdit({...perfilEdit, nombreLocal: e.target.value.toUpperCase()})} /></div>
                 </div>
-                <Button onClick={guardarPerfil} className={`w-full h-11 rounded-xl font-black uppercase italic ${tema.accent}`}>Actualizar</Button>
+              ))}
+            </div>
+            <Button onClick={() => guardarEstadoLocal(estadoLocal)} className={`mt-8 w-full h-14 rounded-2xl font-black uppercase italic shadow-lg ${tema.accent}`}>Actualizar Horarios de la Semana</Button>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* PERFIL LOCAL */}
+            <Card className={`rounded-[3rem] border-none shadow-xl p-8 ${tema.bgHeader}`}>
+              <h3 className={`text-xl font-black uppercase italic mb-6 flex items-center gap-3 ${tema.text}`}><Store className={tema.primary} /> Identidad</h3>
+              <div className="flex items-center gap-4 bg-black/5 p-4 rounded-[2rem]">
+                <label className="relative shrink-0 w-20 h-20 rounded-2xl overflow-hidden cursor-pointer bg-white border-2 border-dashed border-black/10 flex items-center justify-center hover:border-orange-500 transition-colors">
+                  {perfilEdit.logoUrl ? <img src={perfilEdit.logoUrl} className="w-full h-full object-cover" alt="Logo" /> : <UploadCloud size={24} className="opacity-20" />}
+                  <input type="file" className="hidden" onChange={(e) => handleFileChange(e, 'logo')} />
+                </label>
+                <div className="flex-1">
+                  <p className="text-[10px] font-black uppercase opacity-40 mb-1 ml-2">Nombre Comercial</p>
+                  <Input className="bg-white border-none font-black h-12 rounded-xl uppercase px-4" value={perfilEdit.nombreLocal} onChange={e => setPerfilEdit({...perfilEdit, nombreLocal: e.target.value.toUpperCase()})} />
+                </div>
               </div>
+              <Button onClick={guardarPerfil} className={`w-full mt-4 h-14 rounded-2xl font-black uppercase italic ${tema.accent}`}>Guardar Perfil</Button>
             </Card>
 
-            {/* TEMAS */}
-            <Card className={`rounded-[2rem] md:rounded-[3rem] border-none shadow-xl p-6 md:p-8 ${tema.bgHeader}`}>
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 md:mb-6 shadow-xl ${tema.accent} text-white`}><Palette size={24} /></div>
-              <h3 className={`text-lg md:text-xl font-black uppercase italic mb-5 ${tema.text}`}>Estilo</h3>
-              <div className="grid grid-cols-3 gap-3">
+            {/* ESTILO VISUAL */}
+            <Card className={`rounded-[3rem] border-none shadow-xl p-8 ${tema.bgHeader}`}>
+              <h3 className={`text-xl font-black uppercase italic mb-6 flex items-center gap-3 ${tema.text}`}><Palette className={tema.primary} /> Apariencia</h3>
+              <div className="grid grid-cols-3 gap-4">
                 {['naranja', 'oscuro', 'verde'].map(t => (
-                  <div key={t} onClick={() => cambiarTema(t)} className={`flex flex-col items-center gap-2 cursor-pointer transition-all ${temaActivo === t ? 'scale-110' : 'opacity-40'}`}>
-                    <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl border-4 border-white shadow-md flex items-center justify-center ${t === 'naranja' ? 'bg-orange-600' : t === 'oscuro' ? 'bg-zinc-900' : 'bg-emerald-600'}`}>{temaActivo === t && <Check className="text-white" size={14} />}</div>
-                    <span className={`text-[7px] md:text-[8px] font-black uppercase ${tema.text}`}>{t}</span>
-                  </div>
+                  <button key={t} onClick={() => cambiarTema(t)} className={`flex flex-col items-center gap-3 transition-all hover:scale-110 ${temaActivo === t ? 'opacity-100' : 'opacity-30'}`}>
+                    <div className={`w-14 h-14 rounded-2xl border-4 shadow-lg flex items-center justify-center ${t === 'naranja' ? 'bg-orange-600 border-orange-100' : t === 'oscuro' ? 'bg-zinc-900 border-zinc-700' : 'bg-emerald-600 border-emerald-100'}`}>
+                      {temaActivo === t && <Check className="text-white" size={20} strokeWidth={4} />}
+                    </div>
+                    <span className={`text-[10px] font-black uppercase ${tema.text}`}>{t}</span>
+                  </button>
                 ))}
               </div>
             </Card>
-
-            <Link to="/admin/qrs" className="md:col-span-2 group">
-              <Card className={`rounded-[2rem] p-5 md:p-6 flex items-center justify-between ${tema.bgHeader} hover:ring-2 ring-current transition-all border-none shadow-lg`}>
-                <div className="flex items-center gap-3 md:gap-4">
-                  <div className={`${tema.accent} p-3 rounded-xl text-white`}><QrCode size={22} /></div>
-                  <div><h3 className={`font-black uppercase italic text-sm md:text-base ${tema.text}`}>QR & Mesas</h3><p className="text-[9px] font-bold opacity-40 uppercase">Descargar códigos</p></div>
-                </div>
-                <ChevronRight className="opacity-20" size={20} />
-              </Card>
-            </Link>
           </div>
+
+          {/* ACCESO RÁPIDO QR */}
+          <Link to="/admin/qrs" className="block group">
+            <Card className={`rounded-[2.5rem] p-8 flex items-center justify-between ${tema.bgHeader} group-hover:ring-4 ring-orange-500/20 transition-all border-none shadow-2xl`}>
+              <div className="flex items-center gap-6">
+                <div className={`${tema.accent} p-4 rounded-2xl text-white shadow-lg shadow-orange-100`}><QrCode size={32} /></div>
+                <div><h3 className={`font-black uppercase italic text-2xl ${tema.text}`}>Códigos QR & Mesas</h3><p className="text-[10px] font-bold opacity-30 uppercase tracking-[0.2em]">Administrar puntos de venta físicos</p></div>
+              </div>
+              <div className="bg-black/5 p-4 rounded-full group-hover:translate-x-2 transition-transform"><ChevronRight className={tema.primary} size={32} /></div>
+            </Card>
+          </Link>
         </div>
       )}
     </div>
