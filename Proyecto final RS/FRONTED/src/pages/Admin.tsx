@@ -6,7 +6,7 @@ import {
   Plus, Trash2, UploadCloud, Edit3, Save, Megaphone, 
   DollarSign, CalendarDays, Users, Settings, Palette, 
   LogOut, LayoutDashboard, ExternalLink, ChevronRight, Check, Utensils, QrCode, Store
-} from "lucide-react"
+} from "lucide-center"
 import { ref, push, remove, update, onValue, set } from "firebase/database"
 import { db } from "../lib/firebase"
 import { toast } from "sonner"
@@ -162,11 +162,8 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
         </button>
       </div>
 
-      {/* CONTENIDO DE PESTAÑAS (Mantenemos Menu y Reservas igual) */}
       {tab === 'menu' && (
         <div className="space-y-10 animate-in slide-in-from-left-4 duration-500">
-           {/* ... (Todo el contenido de promo y lista de productos que ya tienes) ... */}
-           {/* Para ahorrar espacio en la respuesta, asumo que mantienes tu bloque de Menu igual */}
            <Card className={`rounded-[2.5rem] border-none shadow-2xl overflow-hidden border-b-8 ${tema.bgHeader} ${tema.border.replace('border-', 'border-b-')}`}>
             <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
               <div className="space-y-4">
@@ -195,7 +192,7 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
               </label>
             </div>
           </Card>
-          {/* ... (resto del grid de productos) ... */}
+
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
               <div className="xl:col-span-1">
                 <Card className={`rounded-[3rem] border-none shadow-2xl sticky top-10 overflow-hidden border-t-8 ${tema.bgHeader} ${tema.border.replace('border-', 'border-t-')}`}>
@@ -211,7 +208,7 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
                     <div className="grid grid-cols-2 gap-4">
                       <Input className="rounded-2xl h-14 font-bold bg-black/5 border-none" type="number" placeholder="Precio $" value={nuevo.precio} onChange={e => setNuevo({...nuevo, precio: e.target.value})} />
                       <select className={`border-none rounded-2xl h-14 px-4 text-[10px] font-black uppercase bg-black/5 outline-none focus:ring-2 ${tema.text}`} value={nuevo.categoria} onChange={e => setNuevo({...nuevo, categoria: e.target.value})}>
-                        {CATEGORIAS_MENU.map(c => <option key={c} className="bg-slate-800 text-white">{c}</option>)}
+                        {CATEGORIAS_MENU.map(c => <option key={c} value={c} className="bg-slate-800 text-white">{c}</option>)}
                       </select>
                     </div>
                     <textarea className="w-full bg-black/5 border-none rounded-2xl p-4 text-sm font-bold min-h-[100px] outline-none" placeholder="Descripción..." value={nuevo.descripcion} onChange={e => setNuevo({...nuevo, descripcion: e.target.value})} />
@@ -219,31 +216,50 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
                   </CardContent>
                 </Card>
               </div>
+
               <div className="xl:col-span-2 space-y-6">
                 {productos.map(p => (
                    <div key={p.id} className={`${tema.bgHeader} p-4 rounded-[2.5rem] shadow-sm border ${tema.border} flex items-center gap-5 group hover:shadow-xl hover:translate-x-2 transition-all duration-300 ${p.disponible === false ? 'opacity-40 grayscale' : ''}`}>
-                   <img src={p.imagen} className="w-24 h-24 rounded-[1.5rem] object-cover shadow-lg" />
-                   <div className="flex-1">
-                     <p className="font-black uppercase italic text-[9px] opacity-40 mb-1">{p.categoria}</p>
-                     <p className={`font-black uppercase italic text-lg leading-none mb-2 ${tema.text}`}>{p.nombre}</p>
-                     {editandoId === p.id ? (
-                       <div className="flex gap-2 mt-2">
-                         <Input className="h-10 text-xs font-bold bg-black/10 border-none rounded-xl" value={editForm.precio} onChange={e => setEditForm({...editForm, precio: e.target.value})} />
-                         <Button onClick={() => guardarEdicion(p.id)} className={`h-10 bg-green-600 rounded-xl px-6 font-black uppercase text-[10px] text-white`}><Save size={14} className="mr-2"/> OK</Button>
-                       </div>
-                     ) : (
-                       <span className={`${tema.primary} font-black italic text-xl tracking-tighter`}>${p.precio}</span>
-                     )}
-                   </div>
-                   <div className="flex gap-2 pr-4">
-                     <Button 
-                       onClick={() => confirm("¿Borrar?") && remove(ref(db, `productos/${p.id}`))} 
-                       className="w-12 h-12 rounded-2xl bg-black/5 text-slate-400 hover:text-red-500 shadow-none"
-                     >
+                    <div className="relative">
+                      <img src={p.imagen} className="w-24 h-24 rounded-[1.5rem] object-cover shadow-lg" />
+                      {p.disponible === false && <div className="absolute inset-0 bg-black/60 rounded-[1.5rem] flex items-center justify-center"><span className="text-[8px] font-black text-white bg-red-600 px-2 py-1 rounded-full">AGOTADO</span></div>}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-black uppercase italic text-[9px] opacity-40 mb-1">{p.categoria}</p>
+                      <p className={`font-black uppercase italic text-lg leading-none mb-2 ${tema.text}`}>{p.nombre}</p>
+                      {editandoId === p.id ? (
+                        <div className="flex gap-2 mt-2">
+                          <Input className="h-10 text-xs font-bold bg-black/10 border-none rounded-xl" value={editForm.precio} onChange={e => setEditForm({...editForm, precio: e.target.value})} />
+                          <Button onClick={() => guardarEdicion(p.id)} className={`h-10 bg-green-600 rounded-xl px-6 font-black uppercase text-[10px] text-white`}><Save size={14} className="mr-2"/> OK</Button>
+                        </div>
+                      ) : (
+                        <span className={`${tema.primary} font-black italic text-xl tracking-tighter`}>${p.precio}</span>
+                      )}
+                    </div>
+                    <div className="flex gap-2 pr-4">
+                      {/* BOTÓN DISPONIBILIDAD */}
+                      <button 
+                        onClick={() => update(ref(db, `productos/${p.id}`), { disponible: p.disponible === false })} 
+                        className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${p.disponible === false ? 'bg-orange-500 text-white shadow-lg' : 'bg-black/5 text-slate-400 hover:bg-black/10'}`}
+                      >
+                        {p.disponible === false ? <Plus size={18} /> : <Plus className="rotate-45" size={18} />}
+                      </button>
+                      {/* BOTÓN EDITAR */}
+                      <button 
+                        onClick={() => { setEditandoId(p.id); setEditForm({ precio: p.precio.toString(), descripcion: p.descripcion || "" }); }} 
+                        className="w-12 h-12 rounded-2xl bg-black/5 text-slate-400 hover:text-blue-500 flex items-center justify-center transition-all"
+                      >
+                        <Edit3 size={18}/>
+                      </button>
+                      {/* BOTÓN BORRAR */}
+                      <button 
+                        onClick={() => confirm("¿Borrar?") && remove(ref(db, `productos/${p.id}`))} 
+                        className="w-12 h-12 rounded-2xl bg-black/5 text-slate-400 hover:text-red-500 flex items-center justify-center transition-all"
+                      >
                         <Trash2 size={18}/>
-                     </Button>
-                   </div>
-                 </div>
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
           </div>
@@ -252,7 +268,6 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
 
       {tab === 'reservas' && (
         <div className="animate-in slide-in-from-bottom-4 duration-500">
-           {/* ... (Contenido de reservas) ... */}
            {reservas.map(r => (
              <Card key={r.id} className={`rounded-[3rem] border-none shadow-xl overflow-hidden mb-4 ${tema.bgHeader}`}>
                 <CardContent className="p-6 flex justify-between items-center">
@@ -267,7 +282,6 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
         </div>
       )}
 
-      {/* NUEVA PESTAÑA DE AJUSTES MEJORADA */}
       {tab === 'config' && (
         <div className="animate-in slide-in-from-right-4 duration-500 max-w-5xl mx-auto space-y-8">
           <div className="text-center mb-8">
@@ -276,7 +290,6 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* BLOQUE: PERFIL DEL LOCAL */}
             <Card className={`rounded-[3rem] border-none shadow-xl p-8 relative overflow-hidden group flex flex-col ${tema.bgHeader}`}>
               <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-xl ${tema.accent}`}>
                 <Store size={28} />
@@ -309,7 +322,6 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
               <Store className="absolute -right-8 -bottom-8 opacity-5 size-40 -rotate-12" />
             </Card>
 
-            {/* BLOQUE: ESTILO DE LA APP (TEMA) */}
             <Card className={`rounded-[3rem] border-none shadow-xl p-8 relative overflow-hidden group flex flex-col ${tema.bgHeader}`}>
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-xl ${tema.accent}`}>
                   <Palette size={28} />
@@ -341,7 +353,6 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
                 <Palette className="absolute -right-8 -bottom-8 opacity-5 size-40 -rotate-12" />
             </Card>
 
-            {/* ACCESO A QR */}
             <Link to="/admin/qrs" className="md:col-span-2 group">
               <Card className={`rounded-[2.5rem] border-none shadow-xl p-6 flex items-center justify-between ${tema.bgHeader} hover:ring-2 ring-current transition-all`}>
                 <div className="flex items-center gap-4">
