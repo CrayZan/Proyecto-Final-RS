@@ -6,7 +6,6 @@ import { Lock, UtensilsCrossed, ArrowRight } from "lucide-react"
 import { toast } from "sonner"
 import { useNavigate } from "react-router-dom"
 
-// Recibimos 'tema' como prop desde App.tsx
 export default function Login({ onLogin, tema }: { onLogin: () => void, tema: any }) {
   const [pass, setPass] = useState("")
   const navigate = useNavigate()
@@ -14,7 +13,6 @@ export default function Login({ onLogin, tema }: { onLogin: () => void, tema: an
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    // VALIDACIÓN DE CLAVE (Mantenemos tu clave admin2026)
     if (pass === "admin2026") {
       onLogin() 
       toast.success("¡Bienvenido, Jefe!")
@@ -26,38 +24,35 @@ export default function Login({ onLogin, tema }: { onLogin: () => void, tema: an
   }
 
   return (
-    /* Reemplazamos bg-slate-50 por tema.bgPage para eliminar el destello */
-    <div className={`min-h-[80vh] flex items-center justify-center p-6 transition-colors duration-500 ${tema.bgPage}`}>
+    <div className={`min-h-[calc(100vh-120px)] flex items-center justify-center p-4 md:p-6 transition-colors duration-500 ${tema.bgPage}`}>
       
-      {/* La tarjeta ahora usa tema.bgHeader y tema.border */}
-      <Card className={`w-full max-w-md rounded-[3rem] border shadow-2xl animate-in zoom-in duration-500 ${tema.bgHeader} ${tema.border}`}>
-        <CardHeader className="text-center pt-10">
-          {/* El icono usa tema.bgIcon */}
-          <div className={`mx-auto p-4 rounded-[1.5rem] shadow-lg mb-6 rotate-3 ${tema.bgIcon}`}>
-            <UtensilsCrossed className="h-8 w-8 text-white" />
+      <Card className={`w-full max-w-[340px] md:max-w-md rounded-[2.5rem] md:rounded-[3rem] border shadow-2xl animate-in zoom-in slide-in-from-bottom-4 duration-500 ${tema.bgHeader} ${tema.border} overflow-hidden`}>
+        <CardHeader className="text-center pt-8 md:pt-10 px-6">
+          {/* Icono adaptable que escala según pantalla */}
+          <div className={`mx-auto p-3.5 md:p-4 rounded-xl md:rounded-[1.5rem] shadow-lg mb-4 md:mb-6 rotate-3 ${tema.bgIcon} w-fit`}>
+            <UtensilsCrossed className="h-6 w-6 md:h-8 md:w-8 text-white" />
           </div>
           
-          <CardTitle className={`font-black uppercase italic tracking-tighter text-3xl ${tema.text}`}>
+          <CardTitle className={`font-black uppercase italic tracking-tighter text-2xl md:text-3xl ${tema.text}`}>
             Acceso <span className={`${tema.primary}`}>Admin</span>
           </CardTitle>
           
-          <p className={`text-[10px] font-black uppercase tracking-[0.3em] mt-2 opacity-40 ${tema.text}`}>
+          <p className={`text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] mt-2 opacity-40 ${tema.text}`}>
             RestoWeb • San Vicente
           </p>
         </CardHeader>
         
-        <CardContent className="p-10">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <CardContent className="p-6 md:p-10">
+          <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
             <div className="relative group">
               <Lock 
-                className={`absolute left-4 top-4 transition-colors opacity-30 group-focus-within:opacity-100 ${tema.text}`} 
-                size={20} 
+                className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors opacity-30 group-focus-within:opacity-100 ${tema.text}`} 
+                size={18} md:size={20} 
               />
               <Input 
                 type="password" 
-                placeholder="CONTRASEÑA MAESTRA" 
-                /* Adaptamos el input para que no brille en temas oscuros */
-                className={`pl-12 h-14 rounded-2xl border-2 bg-black/5 font-black text-lg placeholder:opacity-20 transition-all outline-none focus:ring-2 focus:ring-offset-0 ${tema.border} ${tema.text}`}
+                placeholder="CLAVE MAESTRA" 
+                className={`pl-11 md:pl-12 h-12 md:h-14 rounded-xl md:rounded-2xl border-2 bg-black/5 font-black text-sm md:text-lg placeholder:opacity-20 transition-all outline-none focus:ring-2 focus:ring-offset-0 ${tema.border} ${tema.text}`}
                 value={pass}
                 onChange={(e) => setPass(e.target.value)}
                 autoFocus
@@ -66,15 +61,14 @@ export default function Login({ onLogin, tema }: { onLogin: () => void, tema: an
             
             <Button 
               type="submit" 
-              /* El botón ahora usa tema.accent para el color principal */
-              className={`w-full h-16 rounded-[1.5rem] font-black uppercase italic text-lg shadow-xl transition-all flex gap-3 hover:scale-[1.02] active:scale-95 ${tema.accent}`}
+              className={`w-full h-14 md:h-16 rounded-xl md:rounded-[1.5rem] font-black uppercase italic text-base md:text-lg shadow-xl transition-all flex gap-2 md:gap-3 hover:scale-[1.02] active:scale-95 items-center justify-center ${tema.accent}`}
             >
-              ENTRAR AL PANEL <ArrowRight size={20} />
+              ENTRAR <span className="hidden xs:inline">AL PANEL</span> <ArrowRight size={18} md:size={20} />
             </Button>
           </form>
           
-          <div className="mt-8 text-center">
-            <p className={`text-[9px] font-black uppercase tracking-widest opacity-30 ${tema.text}`}>
+          <div className="mt-6 md:mt-8 text-center">
+            <p className={`text-[8px] md:text-[9px] font-black uppercase tracking-widest opacity-30 px-2 ${tema.text}`}>
               Uso exclusivo para propietarios
             </p>
           </div>
