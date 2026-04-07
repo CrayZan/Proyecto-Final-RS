@@ -1,14 +1,14 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { 
   Utensils, Plus, Truck, Store, Wallet, 
-  CreditCard, Banknote, Navigation, Loader2, X, Clock, Copy, Check 
+  CreditCard, Banknote, Navigation, Loader2, X, Clock, Copy, Check, ShoppingCart, ChevronUp 
 } from "lucide-react"
 import { toast } from "sonner"
-import { ref, push, onValue, get } from "firebase/database" // Agregado 'get' para validación final
+import { ref, push, onValue, get } from "firebase/database"
 import { db } from "../lib/firebase"
 
 const DATOS_PAGO = {
@@ -22,6 +22,7 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
   const [searchParams] = useSearchParams()
   const [carrito, setCarrito] = useState<any[]>([])
   const [loadingMP, setLoadingMP] = useState(false)
+  const [isCartOpen, setIsCartOpen] = useState(false) // Para el drawer móvil
   
   const [entrega, setEntrega] = useState<'mesa' | 'delivery' | 'retiro'>('mesa')
   const [metodoPago, setMetodoPago] = useState<'efectivo' | 'transferencia' | 'mercadopago'>('efectivo')
@@ -30,20 +31,14 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
   const [catSeleccionada, setCatSeleccionada] = useState("Todas")
   const [promoPublicada, setPromoPublicada] = useState<any>(null)
 
-  // --- ESTADOS DE CONTROL DE APERTURA ---
   const [estadoLocal, setEstadoLocal] = useState<'abierto' | 'cerrado' | 'auto'>('auto')
   const [horarios, setHorarios] = useState<any>(null)
   const [estaAbiertoAhora, setEstaAbiertoAhora] = useState(true)
 
   const categoriasUnicas = ["Todas", ...new Set(productos.map(p => p.categoria))];
+  const total = carrito.reduce((acc, item) => acc + (item.precio * item.cant), 0)
 
-  // --- FUNCIÓN PARA COPIAR DATOS ---
-  const copiarDato = (texto: string, label: string) => {
-    navigator.clipboard.writeText(texto)
-    toast.success(`${label} copiado`)
-  }
-
-  // --- ESCUCHA DE CONFIGURACIÓN (ESTADO Y PROMOS) ---
+  // --- ESCUCHA DE CONFIGURACIÓN ---
   useEffect(() => {
     const configRef = ref(db, 'config')
     const unsubscribe = onValue(configRef, (snapshot) => {
@@ -58,52 +53,38 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
     return () => unsubscribe()
   }, [])
 
-  // --- LÓGICA DE VALIDACIÓN DE HORARIOS Y CIERRE MANUAL ---
+  // --- LÓGICA DE VALIDACIÓN DE HORARIOS ---
   useEffect(() => {
     const verificar = () => {
-      // 1. Si el admin puso "Cerrado" manualmente, bloqueamos siempre.
-      if (estadoLocal === 'cerrado') {
-        setEstaAbiertoAhora(false)
-        return
-      }
-
-      // 2. Si el admin puso "Abierto" manualmente, desbloqueamos siempre.
-      if (estadoLocal === 'abierto') {
-        setEstaAbiertoAhora(true)
-        return
-      }
-
-      // 3. Si está en "Automático", validamos contra el reloj.
+      if (estadoLocal === 'cerrado') { setEstaAbiertoAhora(false); return; }
+      if (estadoLocal === 'abierto') { setEstaAbiertoAhora(true); return; }
       if (estadoLocal === 'auto' && horarios) {
         const ahora = new Date()
         const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
         const hoy = dias[ahora.getDay()]
         const h = horarios[hoy]
-
-        if (!h || !h.activo) {
-          setEstaAbiertoAhora(false)
-          return
-        }
-
+        if (!h || !h.activo) { setEstaAbiertoAhora(false); return; }
         const actual = ahora.getHours() * 100 + ahora.getMinutes()
         const inicio = parseInt(h.inicio.replace(':', ''))
         const fin = parseInt(h.fin.replace(':', ''))
-
         setEstaAbiertoAhora(actual >= inicio && actual <= fin)
       }
     }
-    
     verificar()
     const i = setInterval(verificar, 30000)
     return () => clearInterval(i)
   }, [estadoLocal, horarios])
 
-  const total = carrito.reduce((acc, item) => acc + (item.precio * item.cant), 0)
+  const copiarDato = (texto: string, label: string) => {
+    navigator.clipboard.writeText(texto)
+    toast.success(`${label} copiado`)
+  }
 
   const eliminarDelCarrito = (index: number) => {
     const nuevoCarrito = [...carrito];
     nuevoCarrito.splice(index, 1);
     setCarrito(nuevoCarrito);
+    if(nuevoCarrito.length === 0) setIsCartOpen(false);
     toast.success("Producto eliminado");
   };
 
@@ -125,9 +106,8 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
     )
   }
 
-  // --- FUNCIÓN DE ENVÍO CON VALIDACIÓN DE SEGURIDAD ---
+  // --- FUNCIÓN DE ENVÍO CON TODAS TUS VALIDACIONES ORIGINALES ---
   const enviarPedido = async () => {
-    // Verificación de seguridad: Consultamos Firebase una última vez antes de procesar
     const freshConfig = await get(ref(db, 'config'));
     const isActuallyClosed = freshConfig.exists() && freshConfig.val().estado === 'cerrado';
 
@@ -185,6 +165,7 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
 
       window.open(`https://wa.me/542966249538?text=${mensajeWA}`, '_blank')
       setCarrito([])
+      setIsCartOpen(false)
       setLoadingMP(false)
       toast.success("¡Pedido enviado!")
     } catch (e) {
@@ -194,59 +175,61 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
   }
 
   return (
-    <div className={`p-4 md:p-6 max-w-7xl mx-auto pb-40 animate-in fade-in duration-500 ${tema.bgPage}`}>
+    <div className={`min-h-screen pb-28 md:pb-10 transition-colors duration-500 ${tema.bgPage}`}>
       
       {/* HEADER */}
-      <div className="flex flex-col items-center mb-10 text-center">
+      <header className="flex flex-col items-center pt-8 pb-4 text-center px-4">
         {perfil?.logoUrl && (
-          <img src={perfil.logoUrl} alt="Logo" className="w-24 h-24 rounded-3xl object-cover shadow-2xl mb-4 border-4 border-white" />
+          <img src={perfil.logoUrl} alt="Logo" className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] object-cover shadow-2xl mb-4 border-4 border-white animate-in zoom-in" />
         )}
-        <h1 className={`text-5xl font-black uppercase italic tracking-tighter ${tema.text}`}>
+        <h1 className={`text-4xl md:text-6xl font-black uppercase italic tracking-tighter ${tema.text}`}>
           {perfil?.nombreLocal || "RestoWeb"}
         </h1>
-        <div className={`h-1 w-20 ${tema.accent} rounded-full mt-2`}></div>
+        <div className={`h-1.5 w-20 ${tema.accent} rounded-full mt-2`}></div>
         
         {!estaAbiertoAhora && (
           <div className="mt-6 bg-red-600 text-white px-8 py-3 rounded-2xl flex items-center gap-3 animate-pulse shadow-xl">
             <Clock size={20} />
-            <span className="font-black uppercase italic text-sm tracking-widest">Local Cerrado temporalmente</span>
+            <span className="font-black uppercase italic text-xs tracking-widest">Local Cerrado temporalmente</span>
           </div>
         )}
-      </div>
+      </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <div className="lg:col-span-3 space-y-6">
+      <main className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
+        
+        {/* LADO IZQUIERDO: PRODUCTOS Y CONFIG */}
+        <div className="lg:col-span-8 space-y-6">
           
-          {/* SELECTOR DE ENTREGA */}
-          <div className={`${tema.bgHeader} p-2 rounded-[2rem] shadow-sm border ${tema.border} flex gap-2`}>
-            {[
-              { id: 'mesa', icon: Utensils, label: 'En Mesa' },
-              { id: 'delivery', icon: Truck, label: 'Delivery' },
-              { id: 'retiro', icon: Store, label: 'Retiro' }
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                disabled={!estaAbiertoAhora}
-                onClick={() => setEntrega(opt.id as any)}
-                className={`flex-1 flex flex-col items-center py-3 rounded-[1.5rem] transition-all ${entrega === opt.id ? `${tema.accent} shadow-lg scale-105` : `text-slate-400 hover:opacity-70`} ${!estaAbiertoAhora && 'grayscale opacity-50'}`}
-              >
-                <opt.icon size={18} className="mb-1" />
-                <span className="text-[9px] font-black uppercase italic">{opt.label}</span>
-              </button>
-            ))}
-          </div>
+          {/* SELECTOR DE ENTREGA (STICKY) */}
+          <section className="sticky top-2 z-40 bg-opacity-95 backdrop-blur-md">
+            <div className={`${tema.bgHeader} p-1.5 rounded-full shadow-2xl border ${tema.border} flex gap-1`}>
+              {[
+                { id: 'mesa', icon: Utensils, label: 'En Mesa' },
+                { id: 'delivery', icon: Truck, label: 'Delivery' },
+                { id: 'retiro', icon: Store, label: 'Retiro' }
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  disabled={!estaAbiertoAhora}
+                  onClick={() => setEntrega(opt.id as any)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full transition-all ${entrega === opt.id ? `${tema.accent} shadow-lg scale-[1.02]` : `text-slate-400 opacity-50`} ${!estaAbiertoAhora && 'grayscale opacity-50'}`}
+                >
+                  <opt.icon size={18} />
+                  <span className="text-[10px] font-black uppercase italic hidden sm:block">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
 
           {/* INPUTS DE UBICACIÓN */}
-          <div className={`${tema.bgHeader} p-6 rounded-[2.5rem] shadow-sm border ${tema.border} flex items-center gap-4`}>
+          <section className={`${tema.bgHeader} p-4 md:p-6 rounded-[2.5rem] shadow-xl border ${tema.border} flex items-center gap-4 animate-in slide-in-from-top-4`}>
             {entrega === 'mesa' ? (
               <>
-                <div className={`${tema.accent} p-3 rounded-2xl`}>
-                   <Utensils size={20} />
-                </div>
+                <div className={`${tema.accent} p-3 rounded-2xl hidden sm:block`}><Utensils size={20} /></div>
                 <input 
                   disabled={!estaAbiertoAhora}
                   placeholder="NÚMERO DE MESA..." 
-                  className={`text-xl font-black uppercase italic w-full bg-transparent border-none focus:ring-0 ${tema.text} ${!estaAbiertoAhora && 'opacity-20'}`}
+                  className={`text-xl font-black uppercase italic w-full bg-transparent border-none focus:ring-0 text-center sm:text-left ${tema.text} ${!estaAbiertoAhora && 'opacity-20'}`}
                   value={numeroMesa} onChange={e => setNumeroMesa(e.target.value)}
                 />
               </>
@@ -258,17 +241,17 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
                   className={`flex-1 bg-black/5 rounded-2xl px-4 font-bold text-sm h-14 border-none ${tema.text}`} 
                   value={direccion} onChange={e => setDireccion(e.target.value)} 
                 />
-                <button disabled={!estaAbiertoAhora} onClick={obtenerUbicacion} className={`h-14 w-14 flex items-center justify-center rounded-2xl border ${tema.border} ${tema.primary} shadow-sm bg-white`}>
+                <button disabled={!estaAbiertoAhora} onClick={obtenerUbicacion} className={`h-14 w-14 flex items-center justify-center rounded-2xl ${tema.accent} text-white shadow-lg`}>
                   <Navigation size={20} />
                 </button>
               </div>
             ) : (
-              <p className={`w-full text-center font-black opacity-40 italic uppercase text-xs ${tema.text}`}>Retiro por local - Avisamos por WhatsApp</p>
+              <p className={`w-full text-center font-black opacity-40 italic uppercase text-[10px] ${tema.text}`}>Retiro por local - Avisamos por WhatsApp</p>
             )}
-          </div>
+          </section>
 
           {/* CATEGORÍAS */}
-          <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar">
+          <nav className="flex gap-3 overflow-x-auto pb-4 no-scrollbar sticky top-20 z-30 py-2">
             {categoriasUnicas.map(cat => (
               <button
                 key={cat}
@@ -278,7 +261,7 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
                 {cat}
               </button>
             ))}
-          </div>
+          </nav>
 
           {/* PROMO */}
           {promoPublicada && (
@@ -294,15 +277,10 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
                   <div className="flex justify-between items-center">
                     <span className={`text-3xl font-black ${tema.primary}`}>${Number(promoPublicada.precio).toLocaleString()}</span>
                     <Button 
-                      onClick={() => {
-                        setCarrito([...carrito, { id: 'promo', nombre: promoPublicada.titulo, precio: Number(promoPublicada.precio), cant: 1 }]);
-                        toast.success("¡Promoción agregada!");
-                      }}
+                      onClick={() => { setCarrito([...carrito, { id: 'promo', nombre: promoPublicada.titulo, precio: Number(promoPublicada.precio), cant: 1 }]); toast.success("¡Promoción agregada!"); }}
                       disabled={!estaAbiertoAhora}
                       className={`rounded-2xl h-14 px-8 font-black uppercase italic shadow-xl ${estaAbiertoAhora ? tema.accent : 'bg-slate-300'}`}
-                    >
-                      AGREGAR PROMO
-                    </Button>
+                    > AGREGAR </Button>
                   </div>
                 </CardContent>
               </div>
@@ -310,9 +288,9 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
           )}
 
           {/* GRILLA DE PRODUCTOS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {productos.filter(p => catSeleccionada === "Todas" || p.categoria === catSeleccionada).map(p => (
-              <Card key={p.id} className={`rounded-[2.5rem] overflow-hidden border-none shadow-sm ${tema.bgHeader} hover:shadow-xl transition-all group ${(p.disponible === false || !estaAbiertoAhora) ? 'opacity-50' : ''}`}>
+              <Card key={p.id} className={`rounded-[2.5rem] overflow-hidden border-none shadow-sm ${tema.bgHeader} hover:shadow-xl transition-all group active:scale-95 ${(p.disponible === false || !estaAbiertoAhora) ? 'opacity-50' : ''}`}>
                 <div className="h-44 overflow-hidden relative">
                   <img src={p.imagen} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={p.nombre} />
                   {(p.disponible === false || !estaAbiertoAhora) && (
@@ -325,14 +303,11 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
                 </div>
                 <CardContent className="p-6">
                    <p className="text-[9px] font-black uppercase italic opacity-30 mb-1">{p.categoria}</p>
-                   <h3 className={`uppercase font-black text-sm italic mb-4 ${tema.text}`}>{p.nombre}</h3>
+                   <h3 className={`uppercase font-black text-sm italic mb-4 line-clamp-1 ${tema.text}`}>{p.nombre}</h3>
                    <div className="flex justify-between items-center">
                       <span className={`text-xl font-black ${tema.primary}`}>${p.precio.toLocaleString()}</span>
                       <Button 
-                        onClick={() => {
-                          setCarrito([...carrito, {...p, cant: 1}]);
-                          toast.success(`${p.nombre} al carrito`);
-                        }} 
+                        onClick={() => { setCarrito([...carrito, {...p, cant: 1}]); toast.success(`${p.nombre} al carrito`); }} 
                         disabled={p.disponible === false || !estaAbiertoAhora}
                         className={`rounded-2xl h-12 w-12 p-0 shadow-lg ${(p.disponible === false || !estaAbiertoAhora) ? 'bg-slate-200 text-slate-400' : tema.accent}`}
                       >
@@ -345,16 +320,29 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
           </div>
         </div>
 
-        {/* CARRITO */}
-        <div className="lg:col-span-1">
-          <Card className={`rounded-[3rem] shadow-2xl border-none sticky top-10 overflow-hidden border-t-8 ${tema.bgHeader} ${tema.border.replace('border-', 'border-t-')}`}>
-            <div className={`${estaAbiertoAhora ? tema.accent : 'bg-slate-400'} p-8 text-center transition-colors`}>
+        {/* LADO DERECHO: CARRITO (STICKY / FLOATING MÓVIL) */}
+        <aside className={`fixed inset-x-0 bottom-0 z-50 lg:relative lg:inset-auto lg:col-span-4 transition-transform duration-500 ${isCartOpen ? 'translate-y-0' : 'translate-y-[calc(100%-70px)] lg:translate-y-0'}`}>
+          
+          {/* TIRADOR MÓVIL */}
+          <div onClick={() => setIsCartOpen(!isCartOpen)} className={`lg:hidden flex items-center justify-between px-8 h-[70px] rounded-t-[2.5rem] shadow-2xl cursor-pointer ${estaAbiertoAhora ? tema.accent : 'bg-slate-500'}`}>
+            <div className="flex items-center gap-3">
+              <ShoppingCart size={24} />
+              <span className="font-black italic uppercase text-sm">Tu Pedido ({carrito.length})</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="font-black text-xl">${total.toLocaleString()}</span>
+              {isCartOpen ? <X size={24}/> : <ChevronUp size={24} className="animate-bounce"/>}
+            </div>
+          </div>
+
+          <Card className={`h-[85vh] lg:h-auto lg:sticky lg:top-10 flex flex-col rounded-t-[3rem] lg:rounded-[3rem] shadow-2xl border-none overflow-hidden border-t-8 ${tema.bgHeader} ${tema.border.replace('border-', 'border-t-')}`}>
+            <div className={`hidden lg:block ${estaAbiertoAhora ? tema.accent : 'bg-slate-400'} p-8 text-center transition-colors`}>
                 <h3 className="opacity-50 font-black uppercase italic text-[10px] mb-1">Total a Pagar</h3>
                 <div className="text-4xl font-black italic tracking-tighter">${total.toLocaleString('es-AR')}</div>
             </div>
             
-            <CardContent className="p-6 space-y-6">
-              <ScrollArea className="h-[250px] pr-2">
+            <CardContent className="flex-1 overflow-y-auto p-6 space-y-6">
+              <ScrollArea className="h-[250px] lg:h-[300px] pr-2">
                 {carrito.length === 0 ? (
                   <div className="text-center py-10 space-y-2 opacity-20">
                     <Utensils className="mx-auto" size={40} />
@@ -379,7 +367,8 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
 
               <hr className={`opacity-10 ${tema.text}`} />
 
-              {entrega !== 'mesa' && (
+              {/* MÉTODOS DE PAGO INTEGRALES */}
+              {entrega !== 'mesa' && carrito.length > 0 && (
                 <div className={`space-y-4 ${!estaAbiertoAhora && 'opacity-20 pointer-events-none'}`}>
                   <p className={`text-[10px] font-black opacity-30 uppercase text-center italic ${tema.text}`}>Forma de Pago</p>
                   <div className="grid grid-cols-3 gap-2">
@@ -394,36 +383,19 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
                     </button>
                   </div>
 
-                  {/* DATOS DE TRANSFERENCIA (SOLO SI SE ELIGE ESTA OPCIÓN) */}
-                  {metodoPago === 'transferencia' && carrito.length > 0 && (
-                    <div className="bg-blue-500/5 border border-blue-500/20 rounded-3xl p-4 space-y-3 animate-in fade-in zoom-in duration-300">
+                  {metodoPago === 'transferencia' && (
+                    <div className="bg-blue-500/5 border border-blue-500/20 rounded-3xl p-4 space-y-3 animate-in fade-in zoom-in">
                       <p className="text-[9px] font-black uppercase italic text-blue-600 text-center">Datos Bancarios</p>
-                      
                       <div className="space-y-2">
                         <div className="flex justify-between items-center bg-white/50 p-2 rounded-xl">
-                          <div className="flex flex-col">
-                            <span className="text-[7px] uppercase font-bold opacity-40">Alias</span>
-                            <span className="text-[9px] font-black uppercase italic leading-none">{DATOS_PAGO.alias}</span>
-                          </div>
-                          <button onClick={() => copiarDato(DATOS_PAGO.alias, "Alias")} className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors text-blue-600">
-                            <Copy size={12} />
-                          </button>
+                          <div className="flex flex-col"><span className="text-[7px] font-bold opacity-40 uppercase">Alias</span><span className="text-[9px] font-black uppercase italic">{DATOS_PAGO.alias}</span></div>
+                          <button onClick={() => copiarDato(DATOS_PAGO.alias, "Alias")} className="p-1.5 text-blue-600"><Copy size={12} /></button>
                         </div>
-
                         <div className="flex justify-between items-center bg-white/50 p-2 rounded-xl">
-                          <div className="flex flex-col">
-                            <span className="text-[7px] uppercase font-bold opacity-40">CBU</span>
-                            <span className="text-[9px] font-black uppercase italic leading-none">{DATOS_PAGO.cbu}</span>
-                          </div>
-                          <button onClick={() => copiarDato(DATOS_PAGO.cbu, "CBU")} className="p-1.5 hover:bg-blue-100 rounded-lg transition-colors text-blue-600">
-                            <Copy size={12} />
-                          </button>
+                          <div className="flex flex-col"><span className="text-[7px] font-bold opacity-40 uppercase">CBU</span><span className="text-[9px] font-black uppercase italic">{DATOS_PAGO.cbu}</span></div>
+                          <button onClick={() => copiarDato(DATOS_PAGO.cbu, "CBU")} className="p-1.5 text-blue-600"><Copy size={12} /></button>
                         </div>
-
-                        <div className="text-center pt-1 border-t border-blue-500/10">
-                           <span className="text-[7px] uppercase font-bold opacity-40 block">Titular</span>
-                           <span className="text-[9px] font-black uppercase italic">{DATOS_PAGO.titular}</span>
-                        </div>
+                        <div className="text-center pt-1 border-t border-blue-500/10"><span className="text-[7px] uppercase font-bold opacity-40 block">Titular</span><span className="text-[9px] font-black uppercase italic">{DATOS_PAGO.titular}</span></div>
                       </div>
                     </div>
                   )}
@@ -433,23 +405,14 @@ export default function Menu({ productos, tema, perfil }: { productos: any[], te
               <Button 
                 onClick={enviarPedido} 
                 disabled={loadingMP || carrito.length === 0 || !estaAbiertoAhora}
-                className={`w-full h-16 rounded-[1.5rem] font-black text-xs uppercase italic shadow-2xl transition-all ${!estaAbiertoAhora ? 'bg-slate-300 text-slate-500' : (metodoPago === 'mercadopago' && entrega !== 'mesa' ? 'bg-[#009EE3] hover:bg-[#007EB5] text-white' : tema.accent)}`}
+                className={`w-full h-16 rounded-[1.5rem] font-black text-xs uppercase italic shadow-2xl transition-all ${!estaAbiertoAhora ? 'bg-slate-300' : (metodoPago === 'mercadopago' && entrega !== 'mesa' ? 'bg-[#009EE3] text-white' : tema.accent)}`}
               >
-                {loadingMP ? <Loader2 className="animate-spin" /> : 
-                 !estaAbiertoAhora ? 'LOCAL CERRADO' :
-                 entrega === 'mesa' ? 'PEDIR A COCINA' : 
-                 metodoPago === 'mercadopago' ? 'PAGAR AHORA' : 'CONFIRMAR PEDIDO'}
+                {loadingMP ? <Loader2 className="animate-spin" /> : !estaAbiertoAhora ? 'LOCAL CERRADO' : 'ENVIAR PEDIDO'}
               </Button>
-              
-              {!estaAbiertoAhora && (
-                <p className="text-center font-black italic text-[9px] text-red-500 uppercase animate-bounce">
-                  Reabriremos según el horario establecido
-                </p>
-              )}
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </aside>
+      </main>
     </div>
   )
 }
