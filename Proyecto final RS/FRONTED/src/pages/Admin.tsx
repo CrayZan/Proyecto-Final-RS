@@ -1,13 +1,13 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { 
   Plus, Trash2, UploadCloud, Edit3, Save, Megaphone, 
-  DollarSign, CalendarDays, Users, Settings, Palette, 
-  LogOut, LayoutDashboard, ExternalLink, ChevronRight, Check, Utensils, QrCode, Store, Clock, Power
+  DollarSign, CalendarDays, Settings, Palette, 
+  LogOut, LayoutDashboard, ExternalLink, ChevronRight, Check, Utensils, QrCode, Store, Clock, Power, BellRing, X
 } from "lucide-react"
-import { ref, push, remove, update, onValue, set } from "firebase/database"
+import { ref, push, remove, update, onValue, set, onChildAdded, query, limitToLast } from "firebase/database"
 import { db } from "../lib/firebase"
 import { toast } from "sonner"
 import { Link } from "react-router-dom"
@@ -29,6 +29,12 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
   const [reservas, setReservas] = useState<any[]>([])
   const [temaActivo, setTemaActivo] = useState('naranja')
   
+  // ESTADOS DEL SISTEMA DE ALERTAS
+  const [showPedidoModal, setShowPedidoModal] = useState(false)
+  const [ultimoPedido, setUltimoPedido] = useState<any>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const initialized = useRef(false)
+
   // ESTADO DE APERTURA Y HORARIOS
   const [estadoLocal, setEstadoLocal] = useState({
     manualAbierto: true,
@@ -41,6 +47,10 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
   })
 
   useEffect(() => {
+    // Inicializar audio
+    audioRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2205/2205-preview.mp3")
+    audioRef.current.loop = true
+
     onValue(ref(db, 'config/promo'), (snapshot) => {
       if (snapshot.exists()) setPromo(snapshot.val());
     });
@@ -61,11 +71,43 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
         setReservas([]);
       }
     });
+
+    // LÓGICA DE DETECCIÓN DE NUEVOS PEDIDOS (Solo si entran después de cargar la página)
+    const startTime = Date.now();
+    const pedidosRef = query(ref(db, 'reservas'), limitToLast(1));
+    
+    const unsubscribe = onChildAdded(pedidosRef, (snapshot) => {
+      if (!initialized.current) {
+        initialized.current = true;
+        return;
+      }
+      
+      const nuevoPedido = snapshot.val();
+      // Solo disparar si el pedido es realmente nuevo (creado post-carga)
+      if (nuevoPedido && nuevoPedido.createdAt > startTime) {
+        setUltimoPedido(nuevoPedido);
+        setShowPedidoModal(true);
+        audioRef.current?.play().catch(e => console.log("Esperando interacción para audio"));
+        toast.info("¡NUEVO PEDIDO RECIBIDO!", { duration: 10000 });
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      audioRef.current?.pause();
+    };
   }, [])
 
   useEffect(() => {
     if (perfil) setPerfilEdit(perfil);
   }, [perfil]);
+
+  const cerrarAlerta = () => {
+    setShowPedidoModal(false);
+    audioRef.current?.pause();
+    if (audioRef.current) audioRef.current.currentTime = 0;
+    setTab('reservas'); // Te lleva directo a ver quién es
+  }
 
   const guardarPerfil = async () => {
     try {
@@ -137,6 +179,31 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
   return (
     <div className={`p-4 md:p-8 max-w-7xl mx-auto mb-20 animate-in fade-in duration-500 ${tema.bgPage}`}>
       
+      {/* POPUP DE NUEVO PEDIDO (ALTA PRIORIDAD) */}
+      {showPedidoModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in zoom-in duration-300">
+          <div className={`${tema.bgHeader} w-full max-w-md rounded-[3rem] shadow-[0_0_50px_rgba(0,0,0,0.5)] border-4 ${tema.border} overflow-hidden`}>
+            <div className={`${tema.accent} p-8 text-center relative`}>
+              <BellRing size={60} className="mx-auto mb-4 animate-bounce text-white" />
+              <h2 className="text-3xl font-black uppercase italic tracking-tighter text-white">¡NUEVO PEDIDO!</h2>
+            </div>
+            <div className="p-8 text-center space-y-4">
+              <p className={`text-xl font-bold uppercase ${tema.text}`}>Hay una nueva orden de:</p>
+              <div className="bg-black/5 p-4 rounded-2xl">
+                <p className={`text-2xl font-black ${tema.primary}`}>{ultimoPedido?.nombre} {ultimoPedido?.apellido}</p>
+                <p className="text-sm font-bold opacity-50 uppercase tracking-widest">{ultimoPedido?.comensales} Personas • {ultimoPedido?.hora}hs</p>
+              </div>
+              <Button 
+                onClick={cerrarAlerta}
+                className={`w-full h-16 rounded-2xl font-black uppercase italic text-lg shadow-xl ${tema.accent} hover:scale-105 transition-transform`}
+              >
+                ATENDER AHORA
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* CABECERA */}
       <div className={`flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6 ${tema.bgHeader} p-6 rounded-[2.5rem] shadow-sm border ${tema.border}`}>
         <div>
@@ -307,7 +374,6 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             
-            {/* NUEVA TARJETA: CONTROL DE ESTADO Y HORARIOS */}
             <Card className={`rounded-[3rem] border-none shadow-xl p-8 relative overflow-hidden flex flex-col md:col-span-2 ${tema.bgHeader}`}>
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6 z-10">
                 <div className="flex items-center gap-4">
