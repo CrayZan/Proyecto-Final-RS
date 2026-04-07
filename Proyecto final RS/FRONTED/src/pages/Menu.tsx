@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { 
   Utensils, Plus, Truck, Store, Wallet, 
-  CreditCard, Banknote, Navigation, Copy, Check, Loader2, X 
+  CreditCard, Banknote, Navigation, Copy, Check, Loader2, X, AlertCircle 
 } from "lucide-react"
 import { toast } from "sonner"
 import { ref, push, onValue } from "firebase/database"
@@ -207,14 +207,27 @@ export default function Menu({ productos, tema }: { productos: any[], tema: any 
           {/* GRILLA DE PRODUCTOS */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {productos.filter(p => catSeleccionada === "Todas" || p.categoria === catSeleccionada).map(p => (
-              <Card key={p.id} className={`rounded-[2rem] overflow-hidden border ${tema.border} shadow-sm ${tema.bgHeader}`}>
-                <div className="h-40 overflow-hidden"><img src={p.imagen} className="w-full h-full object-cover" alt={p.nombre} /></div>
+              <Card key={p.id} className={`rounded-[2rem] overflow-hidden border ${tema.border} shadow-sm ${tema.bgHeader} transition-all ${p.disponible === false ? 'opacity-60 grayscale-[0.5]' : ''}`}>
+                <div className="h-40 overflow-hidden relative">
+                  <img src={p.imagen} className="w-full h-full object-cover" alt={p.nombre} />
+                  {p.disponible === false && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <span className="bg-red-600 text-white px-4 py-1 rounded-full font-black italic text-[10px] uppercase tracking-tighter">Agotado</span>
+                    </div>
+                  )}
+                </div>
                 <CardContent className="p-5 flex justify-between items-center">
                   <div>
-                    <h3 className={`uppercase font-black text-xs italic ${tema.text}`}>{p.nombre}</h3>
-                    <span className={`text-lg font-black ${tema.primary}`}>${p.precio.toLocaleString()}</span>
+                    <h3 className={`uppercase font-black text-xs italic ${tema.text} ${p.disponible === false ? 'line-through opacity-50' : ''}`}>{p.nombre}</h3>
+                    <span className={`text-lg font-black ${tema.primary} ${p.disponible === false ? 'opacity-50' : ''}`}>${p.precio.toLocaleString()}</span>
                   </div>
-                  <Button onClick={() => setCarrito([...carrito, {...p, cant: 1}])} className={`rounded-xl h-10 w-10 p-0 shadow-lg ${tema.accent}`}><Plus size={18}/></Button>
+                  <Button 
+                    onClick={() => setCarrito([...carrito, {...p, cant: 1}])} 
+                    disabled={p.disponible === false}
+                    className={`rounded-xl h-10 w-10 p-0 shadow-lg ${p.disponible === false ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : tema.accent}`}
+                  >
+                    {p.disponible === false ? <X size={18}/> : <Plus size={18}/>}
+                  </Button>
                 </CardContent>
               </Card>
             ))}
