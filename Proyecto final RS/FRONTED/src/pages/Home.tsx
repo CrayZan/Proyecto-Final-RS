@@ -8,8 +8,8 @@ import { db } from "../lib/firebase"
 import { ref, push } from "firebase/database"
 import { toast } from "sonner"
 
-// Añadimos la prop 'tema' para recibir la configuración visual
-export default function Home({ tema }: { tema: any }) {
+// Añadimos 'perfil' a las props
+export default function Home({ tema, perfil }: { tema: any, perfil: any }) {
   const [showReserva, setShowReserva] = useState(false)
   const [reserva, setReserva] = useState({
     nombre: "",
@@ -45,22 +45,27 @@ export default function Home({ tema }: { tema: any }) {
   }
 
   return (
-    // Cambiamos 'bg-slate-50' por 'tema.bgPage' y añadimos 'tema.text'
     <div className={`min-h-screen flex flex-col items-center justify-center p-6 space-y-6 transition-colors duration-500 ${tema.bgPage}`}>
       
       <div className="text-center space-y-2 mb-4 animate-in fade-in zoom-in duration-700">
-        <div className="bg-orange-600 w-20 h-20 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl rotate-6 mb-4 border-4 border-white">
-          <ChefHat className="text-white" size={40} />
+        {/* LOGO DINÁMICO */}
+        <div className="w-24 h-24 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl rotate-6 mb-4 border-4 border-white overflow-hidden bg-orange-600">
+          {perfil?.logoUrl ? (
+            <img src={perfil.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+          ) : (
+            <ChefHat className="text-white" size={45} />
+          )}
         </div>
+
+        {/* NOMBRE DINÁMICO */}
         <h1 className={`text-5xl font-black italic uppercase tracking-tighter leading-none ${tema.text}`}>
-          Resto<span className="text-orange-600">App</span>
+          {perfil?.nombreLocal || "RESTOAPP"}
         </h1>
         <p className={`opacity-40 font-bold italic text-sm tracking-widest ${tema.text}`}>BIENVENIDOS</p>
       </div>
 
       <div className="w-full max-w-sm space-y-4">
         <Link to="/menu" className="block">
-          {/* Usamos tema.bgHeader para que el botón de la carta destaque sutilmente del fondo */}
           <Button className={`w-full h-24 rounded-[2.5rem] shadow-xl border-none text-xl font-black uppercase italic tracking-tighter transition-all active:scale-95 flex flex-col items-center justify-center gap-1 ${tema.bgHeader} ${tema.text} hover:opacity-90`}>
             <Utensils className="text-orange-600" size={24} />
             <span className="text-sm opacity-60">Explorar el</span>
