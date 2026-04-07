@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { 
   Plus, Trash2, UploadCloud, Edit3, Save, Megaphone, 
   DollarSign, CalendarDays, Settings, Palette, 
-  LogOut, LayoutDashboard, ExternalLink, ChevronRight, Check, Utensils, QrCode, Store, Clock, Power, BellRing, Volume2, CreditCard
+  LogOut, LayoutDashboard, ExternalLink, ChevronRight, Check, Utensils, QrCode, Store, Clock, Power, BellRing, Volume2, CreditCard, Lock
 } from "lucide-react"
 import { ref, push, remove, update, onValue, set, onChildAdded, query, limitToLast } from "firebase/database"
 import { db } from "../lib/firebase"
@@ -33,6 +33,10 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
   const [ultimoPedido, setUltimoPedido] = useState<any>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const initialized = useRef(false)
+
+  // ESTADOS PARA SEGURIDAD AL CAMBIAR PAGOS
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [passConfirm, setPassConfirm] = useState("")
 
   // ESTADO PARA DATOS DE PAGO
   const [datosPago, setDatosPago] = useState({ cbu: "", alias: "", titular: "" })
@@ -109,7 +113,26 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
   }
 
   // Funciones de Guardado
-  const guardarPagos = async () => { try { await set(ref(db, 'config/pagos'), datosPago); toast.success("Datos de pago guardados"); } catch (e) { toast.error("Error"); } }
+  const guardarPagos = async () => { 
+    if (!showConfirm) {
+      setShowConfirm(true);
+      return;
+    }
+
+    if (passConfirm === "admin2026") {
+      try { 
+        await set(ref(db, 'config/pagos'), datosPago); 
+        toast.success("Datos bancarios actualizados con éxito"); 
+        setShowConfirm(false);
+        setPassConfirm("");
+      } catch (e) { 
+        toast.error("Error al guardar"); 
+      } 
+    } else {
+      toast.error("Contraseña de administrador incorrecta");
+    }
+  }
+
   const guardarPerfil = async () => { try { await set(ref(db, 'config/perfil'), perfilEdit); toast.success("Perfil actualizado"); } catch (e) { toast.error("Error"); } }
   const guardarEstadoLocal = async (nuevoEstado: any) => { try { await set(ref(db, 'config/estado'), nuevoEstado); toast.success("Horarios actualizados"); } catch (e) { toast.error("Error"); } }
   const cambiarTema = async (nuevoTema: string) => { try { await set(ref(db, 'config/tema'), nuevoTema); setTemaActivo(nuevoTema); toast.success(`Estilo ${nuevoTema} aplicado`); } catch (e) { toast.error("Error"); } }
@@ -274,7 +297,7 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
         <div className="animate-in slide-in-from-right-4 max-w-5xl mx-auto space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             
-            {/* SECCIÓN DATOS DE TRANSFERENCIA */}
+            {/* SECCIÓN DATOS DE TRANSFERENCIA PROTEGIDA */}
             <Card className={`rounded-[3rem] border-none shadow-xl p-8 relative overflow-hidden md:col-span-2 ${tema.bgHeader}`}>
               <div className="flex items-center gap-4 mb-6">
                 <div className={`${tema.accent} p-3 rounded-2xl text-white shadow-lg`}><CreditCard size={28} /></div>
@@ -288,7 +311,34 @@ export default function Admin({ productos, tema, perfil }: { productos: any[], t
                 <div className="space-y-1"><p className="text-[10px] font-black uppercase opacity-40 ml-2">CBU / CVU</p><Input className="bg-black/5 border-none font-bold h-12 rounded-xl" placeholder="22 dígitos" value={datosPago.cbu} onChange={e => setDatosPago({...datosPago, cbu: e.target.value})} /></div>
                 <div className="space-y-1"><p className="text-[10px] font-black uppercase opacity-40 ml-2">Titular</p><Input className="bg-black/5 border-none font-bold h-12 rounded-xl" placeholder="Nombre completo" value={datosPago.titular} onChange={e => setDatosPago({...datosPago, titular: e.target.value})} /></div>
               </div>
-              <Button onClick={guardarPagos} className={`w-full h-12 rounded-xl font-black uppercase italic ${tema.accent}`}>Guardar Datos Bancarios</Button>
+              
+              {showConfirm && (
+                <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl animate-in zoom-in-95">
+                  <p className="text-[10px] font-black uppercase text-red-500 mb-2 ml-2">Confirmar con Clave Maestra</p>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" size={18} />
+                    <Input 
+                      type="password"
+                      className="bg-white border-none font-bold h-12 rounded-xl pl-12"
+                      placeholder="CONTRASEÑA ADMIN"
+                      value={passConfirm}
+                      onChange={e => setPassConfirm(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                {showConfirm && (
+                  <Button onClick={() => { setShowConfirm(false); setPassConfirm(""); }} variant="outline" className="h-12 rounded-xl font-black uppercase italic">Cancelar</Button>
+                )}
+                <Button 
+                  onClick={guardarPagos} 
+                  className={`flex-1 h-12 rounded-xl font-black uppercase italic transition-all ${showConfirm ? 'bg-red-600' : tema.accent}`}
+                >
+                  {showConfirm ? "AUTORIZAR Y GUARDAR" : "Guardar Datos Bancarios"}
+                </Button>
+              </div>
             </Card>
 
             <Card className={`rounded-[3rem] border-none shadow-xl p-8 relative overflow-hidden md:col-span-2 ${tema.bgHeader}`}>
