@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { Routes, Route, Link, Navigate } from "react-router-dom"
 import { Toaster } from "sonner"
-import { UtensilsCrossed, BadgeCheck, CalendarDays, Lock } from "lucide-react"
+import { UtensilsCrossed, BadgeCheck, CalendarDays, Lock, QrCode } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ref, onValue } from "firebase/database"
 import { db } from "./lib/firebase"
@@ -62,6 +62,14 @@ export default function App() {
         
         {isAuth && (
           <div className="flex gap-3 items-center">
+            {/* BOTÓN QR AGREGADO AL HEADER PARA ACCESO RÁPIDO */}
+            <Link to="/admin/qrs">
+              <Badge variant="outline" className="hidden md:flex py-1.5 font-black text-[9px] bg-white border-slate-200 text-slate-600 gap-2 cursor-pointer hover:bg-slate-50 transition-colors">
+                <QrCode size={12} className="text-orange-500" />
+                MESAS
+              </Badge>
+            </Link>
+
             <Link to="/admin">
               <Badge variant="outline" className="hidden md:flex py-1.5 font-black text-[9px] bg-slate-900 border-slate-900 text-white gap-2 cursor-pointer hover:bg-orange-600 transition-colors">
                 <CalendarDays size={12} className="text-orange-500" />
@@ -71,6 +79,7 @@ export default function App() {
 
             <Link to="/comandas">
               <Badge variant="outline" className="py-1.5 font-black text-[9px] bg-orange-50 border-orange-200 text-orange-700 cursor-pointer hover:bg-orange-100 transition-colors">
+                <BadgeCheck size={12} className="text-orange-500 mr-1" />
                 PEDIDOS ({pedidos.length})
               </Badge>
             </Link>
@@ -91,13 +100,17 @@ export default function App() {
           <Route path="/menu" element={<Menu productos={productos} />} />
           <Route path="/login" element={<Login onLogin={() => setIsAuth(true)} />} />
           
+          {/* RUTAS PROTEGIDAS */}
           <Route path="/admin" element={isAuth ? <Admin productos={productos} /> : <Navigate to="/login" />} />
           <Route path="/admin/qrs" element={isAuth ? <GeneradorQR /> : <Navigate to="/login" />} />
           <Route path="/comandas" element={isAuth ? <Comandas pedidos={pedidos} /> : <Navigate to="/login" />} />
+          
+          {/* REDIRECCIÓN POR DEFECTO */}
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
 
-      {/* FOOTER CON BOTÓN DE LOGIN INFERIOR IZQUIERDA */}
+      {/* FOOTER */}
       <footer className="p-6 mt-auto">
         {!isAuth && (
           <Link 
